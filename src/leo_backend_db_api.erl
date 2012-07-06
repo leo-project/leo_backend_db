@@ -58,15 +58,16 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
 
     BackendMod = backend_mod(BackendDB),
     Fun = fun(DBNumber) ->
-                  case (NumOfDBProcs == 1) of
-                      true ->
-                          {Id, StrDBNumber} = {InstanceName, []};
-                      false ->
-                          NewDBNumber =  integer_to_list(DBNumber),
-                          {Id, StrDBNumber} = {list_to_atom(atom_to_list(InstanceName)
-                                                            ++ "_"
-                                                            ++  NewDBNumber), NewDBNumber}
-                  end,
+                  {Id, StrDBNumber} =
+                      case (NumOfDBProcs == 1) of
+                          true ->
+                              {InstanceName, []};
+                          false ->
+                              NewDBNumber =  integer_to_list(DBNumber),
+                              {list_to_atom(atom_to_list(InstanceName)
+                                            ++ "_"
+                                            ++  NewDBNumber), NewDBNumber}
+                      end,
 
                   case supervisor:start_child(leo_backend_db_sup, [Id, BackendMod, DBRootPath ++ StrDBNumber]) of
                       {ok, _Pid} ->

@@ -110,16 +110,16 @@ inspect(Instance, BackendDb, Path) ->
     %% #2 not-found.
     ?assertEqual(not_found, leo_backend_db_api:first(Instance)),
 
-    case BackendDb of
-        ets ->
-            Fun = fun({K, V}, Acc) ->
+    Fun = case BackendDb of
+              ets ->
+                  fun({K, V}, Acc) ->
                           [{K,V} | Acc]
                   end;
-        _bitcask_or_leveldb ->
-            Fun = fun(K, V, Acc) ->
+              _bitcask_or_leveldb ->
+                  fun(K, V, Acc) ->
                           [{K,V} | Acc]
                   end
-    end,
+          end,
     ?assertEqual(not_found, leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun)),
 
 
