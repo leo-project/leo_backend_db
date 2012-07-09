@@ -1,0 +1,9 @@
+#
+# Leo Commons 
+#
+language: erlang
+script: "make && make eunit"
+notifications:
+  email: false
+otp_release:
+  - R14B04
