@@ -67,9 +67,9 @@
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
-start_link(Id, DBModule, DBPath) ->
-    io:format("~w ~w ~p ~p~n", [?MODULE, ?LINE, DBModule, DBPath]),
-    gen_server:start_link({local, Id}, ?MODULE, [DBModule, DBPath], []).
+start_link(Id, DBModule, Path) ->
+    io:format("~w ~w ~p ~p~n", [?MODULE, ?LINE, DBModule, Path]),
+    gen_server:start_link({local, Id}, ?MODULE, [DBModule, Path], []).
 
 stop(Id) ->
     gen_server:call(Id, stop).
@@ -137,7 +137,7 @@ compact_start(Id) ->
 compact_end(Id, Commit) ->
     gen_server:call(Id, {compact_end, Commit}).
 
-                                                % @doc Direct to put a record to a temporary new data file.
+%% @doc Direct to put a record to a temporary new data file.
 -spec(compact_put(atom(), KeyBin::binary(), ValueBin::binary()) ->
              ok | {error, any()}).
 compact_put(Id, KeyBin, ValueBin) ->
@@ -161,15 +161,24 @@ init([leo_backend_db_ets = DBModule, Table]) ->
     {ok, #state{db       = DBModule,
                 handler  = list_to_atom(Table)}};
 
-init([DBModule, DBPath]) ->
-    Ret = get_raw_path(DBPath),
+init([DBModule, Path0]) ->
+    {ok, Curr} = file:get_cwd(),
+    Path1 = case Path0 of
+                "/"   ++ _Rest -> Path0;
+                "../" ++ _Rest -> Path0;
+                "./"  ++  Rest -> Curr ++ "/" ++ Rest;
+                _              -> Curr ++ "/" ++ Path0
+            end,
+    ?debugVal(Path1),
+
+    Ret = get_raw_path(Path1),
     case Ret of
         {ok, RawPath} ->
-            io:format("~w ~w ~p ~p~n", [?MODULE, ?LINE, DBPath, RawPath]),
-            case DBModule:open(DBPath) of
+            io:format("~w ~w ~p ~p~n", [?MODULE, ?LINE, Path1, RawPath]),
+            case DBModule:open(Path0) of
                 {ok, Handler} ->
                     {ok, #state{db       = DBModule,
-                                path     = DBPath,
+                                path     = Path1,
                                 raw_path = RawPath,
                                 handler  = Handler}};
                 {error, Cause} ->
@@ -224,9 +233,9 @@ handle_call({status}, _From, #state{db      = DBModule,
     {reply, Reply, State};
 
 
-handle_call({compact_start}, _From, #state{db      = DBModule,
-                                           path    = DBPath} = State) ->
-    NewPath = gen_file_raw_path(DBPath),
+handle_call({compact_start}, _From, #state{db   = DBModule,
+                                           path = Path} = State) ->
+    NewPath = gen_file_raw_path(Path),
     case filelib:ensure_dir(NewPath) of
         ok ->
             case DBModule:open(NewPath) of

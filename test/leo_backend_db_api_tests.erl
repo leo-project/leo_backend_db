@@ -37,8 +37,8 @@
 -define(BACKEND_DB_LEVELDB, 'leveldb').
 -define(BACKEND_DB_ETS,     'ets').
 
--define(PATH1,              "../db/backenddb1").
--define(PATH2,              "../db/backenddb2").
+-define(PATH1,              "./work/backenddb1").
+-define(PATH2,              "./work/backenddb2").
 
 -define(TEST_BUCKET_BIN, list_to_binary("air")).
 -define(TEST_KEY_BIN,    list_to_binary("air/on/g/string/music")).
@@ -76,7 +76,7 @@ setup() ->
     ok.
 
 teardown(_) ->
-    os:cmd("rm -rf ../db"),
+    %% os:cmd("rm -rf ./work"),
     meck:unload(),
     leo_backend_db_sup:stop(),
     application:stop(leo_backend_db),
