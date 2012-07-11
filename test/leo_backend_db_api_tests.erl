@@ -76,7 +76,7 @@ setup() ->
     ok.
 
 teardown(_) ->
-    %% os:cmd("rm -rf ./work"),
+    os:cmd("rm -rf ./work"),
     meck:unload(),
     leo_backend_db_sup:stop(),
     application:stop(leo_backend_db),
