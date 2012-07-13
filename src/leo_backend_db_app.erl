@@ -25,7 +25,7 @@
 %%======================================================================
 -module(leo_backend_db_app).
 -author('Yosuke Hara').
--vsn('0.9.0').
+-vsn('0.9.1').
 
 -behaviour(application).
 
