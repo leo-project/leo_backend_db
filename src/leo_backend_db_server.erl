@@ -125,29 +125,39 @@ first(Id) ->
 status(Id) ->
     gen_server:call(Id, {status}).
 
+
 %% @doc Direct to start a compaction.
+%%
 -spec(compact_start(atom()) ->
              ok | {error, any()}).
 compact_start(Id) ->
     gen_server:call(Id, {compact_start}).
 
+
 %% @doc Direct to end a compaction.
+%%
 -spec(compact_end(atom(), boolean()) ->
              ok | {error, any()}).
 compact_end(Id, Commit) ->
     gen_server:call(Id, {compact_end, Commit}).
 
+
 %% @doc Direct to put a record to a temporary new data file.
+%%
 -spec(compact_put(atom(), KeyBin::binary(), ValueBin::binary()) ->
              ok | {error, any()}).
 compact_put(Id, KeyBin, ValueBin) ->
     gen_server:call(Id, {compact_put, KeyBin, ValueBin}).
 
+
 %% @doc get database file path for calculating disk size.
+%%
 -spec(get_db_raw_filepath(atom()) ->
              ok | {error, any()}).
 get_db_raw_filepath(Id) ->
     gen_server:call(Id, {get_db_raw_filepath}).
+
+
 %%--------------------------------------------------------------------
 %% GEN_SERVER CALLBACKS
 %%--------------------------------------------------------------------
@@ -169,10 +179,8 @@ init([DBModule, Path0]) ->
                 "./"  ++  Rest -> Curr ++ "/" ++ Rest;
                 _              -> Curr ++ "/" ++ Path0
             end,
-    ?debugVal(Path1),
 
-    Ret = get_raw_path(Path1),
-    case Ret of
+    case get_raw_path(Path1) of
         {ok, RawPath} ->
             io:format("~w ~w ~p ~p~n", [?MODULE, ?LINE, Path1, RawPath]),
             case DBModule:open(Path0) of
