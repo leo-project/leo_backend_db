@@ -26,7 +26,7 @@
 -module(leo_backend_db_sup).
 
 -author('Yosuke Hara').
--vsn('0.9.0').
+-vsn('0.9.1').
 
 -behaviour(supervisor).
 %% External API
