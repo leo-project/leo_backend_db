@@ -25,7 +25,6 @@
 %%======================================================================
 -module(leo_backend_db_ets).
 -author('Yosuke Hara').
--vsn('0.9.1').
 
 -include_lib("eunit/include/eunit.hrl").
 

@@ -27,14 +27,14 @@
 
 -author('Yosuke Hara').
 -author('Yoshiyuki Kanno').
--vsn('0.9.1').
 
 -include_lib("eunit/include/eunit.hrl").
 
 -export([new/4, put/3, get/2, delete/2, fetch/3, first/1,
          status/1, backend_mod/1,
          compact_start/1, compact_put/3, compact_end/2,
-         get_db_raw_filepath/1
+         get_db_raw_filepath/1,
+         stop/1
         ]).
 
 -define(ETS_TABLE_NAME, 'leo_backend_db_pd').
@@ -67,8 +67,13 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                                             ++  NewDBNumber), NewDBNumber}
                       end,
 
-                  case supervisor:start_child(leo_backend_db_sup, [Id, BackendMod, DBRootPath ++ StrDBNumber]) of
+                  Args = [Id, BackendMod, DBRootPath ++ StrDBNumber],
+                  ChildSpec = {Id,
+                               {leo_backend_db_server, start_link, Args},
+                               permanent, 2000, worker, [leo_backend_db_server]},
+                  case supervisor:start_child(leo_backend_db_sup, ChildSpec) of
                       {ok, _Pid} ->
+                          ?debugVal(_Pid),
                           Id;
                       Cause ->
                           io:format("~w:~w - ~w ~p~n", [?MODULE, ?LINE, Id, Cause]),
@@ -94,6 +99,27 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                 _ ->
                     {error, "Could NOT started worker processes"}
             end
+    end.
+
+
+%% @doc Stop the instance
+%%
+-spec(stop(atom()) ->
+             ok | {error, any()}).
+stop(InstanceName) ->
+    case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
+        [] ->
+            {error, not_found};
+        [{_, List}] ->
+            lists:foreach(
+              fun(Id) ->
+                      case supervisor:terminate_child(leo_backend_db_sup, Id) of
+                          ok ->
+                              supervisor:delete_child(leo_backend_db_sup, Id);
+                          Error ->
+                              Error
+                      end
+              end, List)
     end.
 
 

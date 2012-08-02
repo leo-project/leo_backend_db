@@ -26,7 +26,6 @@
 -module(leo_backend_db_sup).
 
 -author('Yosuke Hara').
--vsn('0.9.1').
 
 -behaviour(supervisor).
 %% External API
@@ -65,9 +64,11 @@ stop() ->
 %% @end
 %% @private
 init([]) ->
-    {ok, {{simple_one_for_one, 5, 60},
-          [{leo_backend_db_server, {leo_backend_db_server, start_link, []},
-            permanent, 2000, worker, [leo_backend_db_server]}]}}.
+    {ok, {{one_for_one, 5, 60}, []}}.
+
+    %% {ok, {{simple_one_for_one, 5, 60},
+    %%       [{leo_backend_db_server, {leo_backend_db_server, start_link, []},
+    %%         permanent, 2000, worker, [leo_backend_db_server]}]}}.
 
 %% ---------------------------------------------------------------------
 %% Inner Function(s)

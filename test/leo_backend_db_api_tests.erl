@@ -25,7 +25,6 @@
 %%====================================================================
 -module(leo_backend_db_api_tests).
 -author('yosuke hara').
--vsn('0.9.1').
 
  -include_lib("eunit/include/eunit.hrl").
 
@@ -146,6 +145,10 @@ inspect(Instance, BackendDb, Path) ->
     {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun),
 
     ?assertEqual(5, length(Res5)),
+
+    ok = leo_backend_db_api:stop(Instance),
+    [{specs,_},{active,Active1},{supervisors,_},{workers,Workers1}] = supervisor:count_children(leo_backend_db_sup),
+    ?assertEqual({0,0}, {Active1,Workers1}),
     ok.
 
 
