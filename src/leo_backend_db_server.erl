@@ -68,7 +68,6 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 start_link(Id, DBModule, Path) ->
-    io:format("~w ~w ~p ~p~n", [?MODULE, ?LINE, DBModule, Path]),
     gen_server:start_link({local, Id}, ?MODULE, [DBModule, Path], []).
 
 stop(Id) ->
@@ -182,7 +181,6 @@ init([DBModule, Path0]) ->
 
     case get_raw_path(Path1) of
         {ok, RawPath} ->
-            io:format("~w ~w ~p ~p~n", [?MODULE, ?LINE, Path1, RawPath]),
             case DBModule:open(Path0) of
                 {ok, Handler} ->
                     {ok, #state{db       = DBModule,

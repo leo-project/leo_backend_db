@@ -52,8 +52,6 @@
 -spec(new(atom(), integer(), backend_db(), string()) ->
              ok | {error, any()}).
 new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
-    io:format("~w:~w - ~p,~p,~p,~p~n", [?MODULE, ?LINE, InstanceName, NumOfDBProcs, BackendDB, DBRootPath]),
-
     ok = start_app(),
 
     BackendMod = backend_mod(BackendDB),
