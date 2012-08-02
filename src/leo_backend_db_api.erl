@@ -73,7 +73,6 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                                permanent, 2000, worker, [leo_backend_db_server]},
                   case supervisor:start_child(leo_backend_db_sup, ChildSpec) of
                       {ok, _Pid} ->
-                          ?debugVal(_Pid),
                           Id;
                       Cause ->
                           io:format("~w:~w - ~w ~p~n", [?MODULE, ?LINE, Id, Cause]),
@@ -91,7 +90,7 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
                         [] ->
                             true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret});
-                        {InstanceName, List} ->
+                        [{InstanceName, List}|_] ->
                             true = ets:delete(?ETS_TABLE_NAME, InstanceName),
                             true = ets:insert(?ETS_TABLE_NAME, {InstanceName, List ++ Ret})
                     end,
@@ -110,7 +109,8 @@ stop(InstanceName) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
             {error, not_found};
-        [{_, List}] ->
+        [{_, List}|_] ->
+            true = ets:delete(?ETS_TABLE_NAME, InstanceName),            
             lists:foreach(
               fun(Id) ->
                       case supervisor:terminate_child(leo_backend_db_sup, Id) of
@@ -119,7 +119,8 @@ stop(InstanceName) ->
                           Error ->
                               Error
                       end
-              end, List)
+              end, List),
+            ok
     end.
 
 
