@@ -26,7 +26,7 @@
 -module(leo_backend_db_api_tests).
 -author('yosuke hara').
 
- -include_lib("eunit/include/eunit.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -define(TEST_INSTANCE_NAME1, 'test_bitcask').
 -define(TEST_INSTANCE_NAME2, 'test_leveldb').
@@ -158,12 +158,15 @@ compact_(_) ->
     Val = <<"val">>,
 
     ok = leo_backend_db_api:new(Id, 1, ?BACKEND_DB_LEVELDB, ?PATH2),
+
     ok = leo_backend_db_api:put(Id, Key, Val),
     not_found = leo_backend_db_api:get(Id, <<"hoge">>),
     {ok, Val} = leo_backend_db_api:get(Id, Key),
     ok = leo_backend_db_api:delete(Id, Key),
     not_found = leo_backend_db_api:get(Id, Key),
+
     {ok, _Path} = leo_backend_db_api:get_db_raw_filepath(Id),
+
 
     %% need to do for generating different tmp directory name
     timer:sleep(1000),

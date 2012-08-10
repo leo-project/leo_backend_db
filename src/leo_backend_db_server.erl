@@ -267,12 +267,15 @@ handle_call({compact_end, Commit}, _From, #state{db           = DBModule,
                                                  handler      = Handler,
                                                  tmp_raw_path = TmpPath,
                                                  tmp_handler  = TmpHandler} = State) ->
-    erlang:apply(DBModule, close, [TmpHandler]),
+    _Res0 = erlang:apply(DBModule, close, [TmpHandler]),
+
     case Commit of
         true ->
-            erlang:apply(DBModule, close, [Handler]),
+            _Res1 = erlang:apply(DBModule, close, [Handler]),
+
             leo_utils:file_delete_all(RawPath),
             file:delete(Path),
+
             case file:make_symlink(TmpPath, Path) of
                 ok ->
                     case DBModule:open(Path) of

@@ -92,7 +92,8 @@ open1(Path, Options) ->
 %% @doc close bitcask.
 %%
 -spec(close(pid()) -> ok).
-close(_Handler) ->
+close(Handler) ->
+    catch eleveldb:close(Handler),
     ok.
 
 
