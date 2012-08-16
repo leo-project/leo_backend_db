@@ -298,7 +298,7 @@ start_app() ->
     Module = leo_backend_db,
     case application:start(Module) of
         ok ->
-            ?ETS_TABLE_NAME = ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
+            catch ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
             ok;
         {error, {already_started, Module}} ->
             ok;
