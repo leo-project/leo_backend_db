@@ -24,6 +24,9 @@
 %% @end
 %%====================================================================
 -module(leo_backend_db_prop).
+
+-author('Yosuke Hara').
+
 -include_lib("proper/include/proper.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -36,7 +39,7 @@
          postcondition/3]).
 
 
--type db_type() :: 'bitcask' | 'leveldb'.
+-type db_type() :: 'bitcask' | 'leveldb' | 'ets'.
 
 -record(state, {stored = []  :: [string()],  %% list of objects stored in DB
                 type         :: db_type()
@@ -52,7 +55,7 @@
                         end, lists:seq(0, 9))).
 
 
-%% Utils
+%% @doc Utils
 %%
 key() ->
     frequency([{1, elements(?KEYS)}]).
@@ -61,7 +64,7 @@ value() ->
     frequency([{1, elements([<<"a">>, <<"b">>, <<"c">>, <<"d">>, <<"e">>])}]).
 
 
-%% Property TEST
+%% @doc Property TEST
 %%
 prop_db() ->
     ?FORALL(Type, noshrink(db_type()),
@@ -69,7 +72,6 @@ prop_db() ->
                     begin
                         leo_backend_db_api:new(?INSTANCE_NAME, ?NUM_OF_PROCS, Type, ?DB_PATH),
                         {H,S,Res} = run_commands(?MODULE, Cmds),
-                        ?debugVal({H,S,Res}),
 
                         leo_backend_db_api:stop(?INSTANCE_NAME),
                         application:stop(leo_backend_db),
@@ -82,15 +84,15 @@ prop_db() ->
 
 
 
-%% Initialize state
+%% @doc Initialize state
 %%
 initial_state() ->
-    #state{type = set}.
+    #state{}.
 initial_state(Type) ->
     #state{type = Type}.
 
 
-%% Command
+%% @doc Command
 %%
 command(_S) ->
     Cmd0 = [{call, leo_backend_db_api, put,    [?INSTANCE_NAME, key(), value()]},
@@ -99,15 +101,16 @@ command(_S) ->
     oneof(Cmd0).
 
 
-%% Pre-Condition
+%% @doc Pre-Condition
 %%
 precondition(_S, {call,_,_,_}) ->
     true.
 
 
-%% Next-State
+%% @doc Next-State
 %%
-next_state(S, _V, {call,_,put,[_Instance, Key,_Object]}) ->
+next_state(S, _V, {call,_,put,[_Instance, Key, _Object]}) ->
+    %% ?debugVal(_V),
     case proplists:is_defined(Key, S#state.stored) of
         false ->
             S#state{stored = S#state.stored ++ [Key]};
@@ -116,12 +119,15 @@ next_state(S, _V, {call,_,put,[_Instance, Key,_Object]}) ->
     end;
 
 next_state(S, _V, {call,_,delete,[_Instance, Key]}) ->
+    %% ?debugVal(_V),
     S#state{stored=proplists:delete(Key, S#state.stored)};
 next_state(S, _V, {call,_,_,_}) ->
+    %% ?debugVal(_V),
     S.
 
 
-%% Post-Condition
+%% @doc Post-Condition
 %%
-postcondition(_,_,_) ->
+postcondition(_S,_V,_) ->
+    %% ?debugVal(_V),
     true.
