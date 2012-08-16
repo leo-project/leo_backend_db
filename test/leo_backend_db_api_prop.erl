@@ -23,7 +23,7 @@
 %% @doc
 %% @end
 %%====================================================================
--module(leo_backend_db_prop).
+-module(leo_backend_db_api_prop).
 
 -author('Yosuke Hara').
 

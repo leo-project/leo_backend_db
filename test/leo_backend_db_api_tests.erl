@@ -180,5 +180,13 @@ compact_(_) ->
     {ok,Val} = leo_backend_db_api:get(Id, Key),
     ok.
 
+
+backend_db_prop_test_() ->
+    {setup,
+     fun()  -> ok end,
+     fun(_) -> ok end,
+     {timeout, 10000, [?assertEqual([], proper:module(leo_backend_db_api_prop))]}
+    }.
+
 -endif.
 
