@@ -1,6 +1,8 @@
 leo_backend_db
 ==============
 
+[![Build Status](https://secure.travis-ci.org/leo-project/leo_backend_db.png?branch=master)](http://travis-ci.org/leo-project/leo_backend_db)
+
 Overview
 --------
 
@@ -13,4 +15,3 @@ Overview
   * [rebar](https://github.com/basho/rebar)
 * "leo_backend_db" requires Erlang R14B04 or later.
 
-[![Build Status](https://secure.travis-ci.org/leo-project/leo_backend_db.png?branch=master)](http://travis-ci.org/leo-project/leo_backend_db)
