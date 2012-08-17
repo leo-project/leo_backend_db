@@ -64,7 +64,8 @@ backend_db_test_() ->
      [{with, [T]} || T <- [fun all_bitcask_/1,
                            fun all_leveldb_/1,
                            fun all_ets_/1,
-                           fun compact_/1
+                           fun compact_/1,
+                           fun proper_/1
                           ]]}.
 
 setup() ->
@@ -180,13 +181,10 @@ compact_(_) ->
     {ok,Val} = leo_backend_db_api:get(Id, Key),
     ok.
 
-
-backend_db_prop_test_() ->
-    {setup,
-     fun()  -> ok end,
-     fun(_) -> ok end,
-     {timeout, 10000, [?assertEqual([], proper:module(leo_backend_db_api_prop))]}
-    }.
+proper_(_) ->
+    Res = proper:module(leo_backend_db_api_prop),
+    ?assertEqual([], Res),
+    ok.
 
 -endif.
 
