@@ -25,7 +25,6 @@
 %%======================================================================
 -module(leo_backend_db_eleveldb).
 -author('Yosuke Hara').
--vsn('0.9.1').
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -93,7 +92,8 @@ open1(Path, Options) ->
 %% @doc close bitcask.
 %%
 -spec(close(pid()) -> ok).
-close(_Handler) ->
+close(Handler) ->
+    catch eleveldb:close(Handler),
     ok.
 
 

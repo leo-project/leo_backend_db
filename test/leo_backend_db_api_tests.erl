@@ -2,7 +2,7 @@
 %%
 %% Leo Backend DB
 %%
-%% Copyright (c) 2012
+%% Copyright (c) 2012 Rakuten, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -25,9 +25,8 @@
 %%====================================================================
 -module(leo_backend_db_api_tests).
 -author('yosuke hara').
--vsn('0.9.1').
 
- -include_lib("eunit/include/eunit.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -define(TEST_INSTANCE_NAME1, 'test_bitcask').
 -define(TEST_INSTANCE_NAME2, 'test_leveldb').
@@ -65,7 +64,8 @@ backend_db_test_() ->
      [{with, [T]} || T <- [fun all_bitcask_/1,
                            fun all_leveldb_/1,
                            fun all_ets_/1,
-                           fun compact_/1
+                           fun compact_/1,
+                           fun proper_/1
                           ]]}.
 
 setup() ->
@@ -146,6 +146,10 @@ inspect(Instance, BackendDb, Path) ->
     {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun),
 
     ?assertEqual(5, length(Res5)),
+
+    ok = leo_backend_db_api:stop(Instance),
+    [{specs,_},{active,Active1},{supervisors,_},{workers,Workers1}] = supervisor:count_children(leo_backend_db_sup),
+    ?assertEqual({0,0}, {Active1,Workers1}),
     ok.
 
 
@@ -155,12 +159,15 @@ compact_(_) ->
     Val = <<"val">>,
 
     ok = leo_backend_db_api:new(Id, 1, ?BACKEND_DB_LEVELDB, ?PATH2),
+
     ok = leo_backend_db_api:put(Id, Key, Val),
     not_found = leo_backend_db_api:get(Id, <<"hoge">>),
     {ok, Val} = leo_backend_db_api:get(Id, Key),
     ok = leo_backend_db_api:delete(Id, Key),
     not_found = leo_backend_db_api:get(Id, Key),
+
     {ok, _Path} = leo_backend_db_api:get_db_raw_filepath(Id),
+
 
     %% need to do for generating different tmp directory name
     timer:sleep(1000),
@@ -172,6 +179,11 @@ compact_(_) ->
     ok = leo_backend_db_api:compact_put(Id, Key, Val),
     ok = leo_backend_db_api:compact_end(Id, true),
     {ok,Val} = leo_backend_db_api:get(Id, Key),
+    ok.
+
+proper_(_) ->
+    Res = proper:module(leo_backend_db_api_prop),
+    ?assertEqual([], Res),
     ok.
 
 -endif.

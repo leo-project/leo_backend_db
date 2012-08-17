@@ -25,7 +25,6 @@
 %%======================================================================
 -module(leo_backend_db_server).
 -author('Yosuke Hara').
--vsn('0.9.1').
 
 -behaviour(gen_server).
 
@@ -68,7 +67,6 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 start_link(Id, DBModule, Path) ->
-    io:format("~w ~w ~p ~p~n", [?MODULE, ?LINE, DBModule, Path]),
     gen_server:start_link({local, Id}, ?MODULE, [DBModule, Path], []).
 
 stop(Id) ->
@@ -182,7 +180,6 @@ init([DBModule, Path0]) ->
 
     case get_raw_path(Path1) of
         {ok, RawPath} ->
-            io:format("~w ~w ~p ~p~n", [?MODULE, ?LINE, Path1, RawPath]),
             case DBModule:open(Path0) of
                 {ok, Handler} ->
                     {ok, #state{db       = DBModule,
@@ -270,12 +267,15 @@ handle_call({compact_end, Commit}, _From, #state{db           = DBModule,
                                                  handler      = Handler,
                                                  tmp_raw_path = TmpPath,
                                                  tmp_handler  = TmpHandler} = State) ->
-    erlang:apply(DBModule, close, [TmpHandler]),
+    _Res0 = erlang:apply(DBModule, close, [TmpHandler]),
+
     case Commit of
         true ->
-            erlang:apply(DBModule, close, [Handler]),
+            _Res1 = erlang:apply(DBModule, close, [Handler]),
+
             leo_utils:file_delete_all(RawPath),
             file:delete(Path),
+
             case file:make_symlink(TmpPath, Path) of
                 ok ->
                     case DBModule:open(Path) of

@@ -27,14 +27,14 @@
 
 -author('Yosuke Hara').
 -author('Yoshiyuki Kanno').
--vsn('0.9.1').
 
 -include_lib("eunit/include/eunit.hrl").
 
 -export([new/4, put/3, get/2, delete/2, fetch/3, first/1,
          status/1, backend_mod/1,
          compact_start/1, compact_put/3, compact_end/2,
-         get_db_raw_filepath/1
+         get_db_raw_filepath/1,
+         stop/1
         ]).
 
 -define(ETS_TABLE_NAME, 'leo_backend_db_pd').
@@ -52,8 +52,6 @@
 -spec(new(atom(), integer(), backend_db(), string()) ->
              ok | {error, any()}).
 new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
-    io:format("~w:~w - ~p,~p,~p,~p~n", [?MODULE, ?LINE, InstanceName, NumOfDBProcs, BackendDB, DBRootPath]),
-
     ok = start_app(),
 
     BackendMod = backend_mod(BackendDB),
@@ -69,7 +67,11 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                                             ++  NewDBNumber), NewDBNumber}
                       end,
 
-                  case supervisor:start_child(leo_backend_db_sup, [Id, BackendMod, DBRootPath ++ StrDBNumber]) of
+                  Args = [Id, BackendMod, DBRootPath ++ StrDBNumber],
+                  ChildSpec = {Id,
+                               {leo_backend_db_server, start_link, Args},
+                               permanent, 2000, worker, [leo_backend_db_server]},
+                  case supervisor:start_child(leo_backend_db_sup, ChildSpec) of
                       {ok, _Pid} ->
                           Id;
                       Cause ->
@@ -88,7 +90,7 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
                         [] ->
                             true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret});
-                        {InstanceName, List} ->
+                        [{InstanceName, List}|_] ->
                             true = ets:delete(?ETS_TABLE_NAME, InstanceName),
                             true = ets:insert(?ETS_TABLE_NAME, {InstanceName, List ++ Ret})
                     end,
@@ -96,6 +98,29 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                 _ ->
                     {error, "Could NOT started worker processes"}
             end
+    end.
+
+
+%% @doc Stop the instance
+%%
+-spec(stop(atom()) ->
+             ok | {error, any()}).
+stop(InstanceName) ->
+    case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
+        [] ->
+            {error, not_found};
+        [{_, List}|_] ->
+            true = ets:delete(?ETS_TABLE_NAME, InstanceName),            
+            lists:foreach(
+              fun(Id) ->
+                      case supervisor:terminate_child(leo_backend_db_sup, Id) of
+                          ok ->
+                              supervisor:delete_child(leo_backend_db_sup, Id);
+                          Error ->
+                              Error
+                      end
+              end, List),
+            ok
     end.
 
 
@@ -273,7 +298,7 @@ start_app() ->
     Module = leo_backend_db,
     case application:start(Module) of
         ok ->
-            ?ETS_TABLE_NAME = ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
+            catch ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
             ok;
         {error, {already_started, Module}} ->
             ok;
