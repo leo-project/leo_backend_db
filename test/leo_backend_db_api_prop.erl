@@ -97,7 +97,9 @@ initial_state(Type) ->
 command(_S) ->
     Cmd0 = [{call, leo_backend_db_api, put,    [?INSTANCE_NAME, key(), value()]},
             {call, leo_backend_db_api, get,    [?INSTANCE_NAME, key()]},
-            {call, leo_backend_db_api, delete, [?INSTANCE_NAME, key()]}],
+            {call, leo_backend_db_api, delete, [?INSTANCE_NAME, key()]},
+            {call, leo_backend_db_api, first,  [?INSTANCE_NAME]}
+           ],
     oneof(Cmd0).
 
 

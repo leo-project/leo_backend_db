@@ -273,7 +273,7 @@ handle_call({compact_end, Commit}, _From, #state{db           = DBModule,
         true ->
             _Res1 = erlang:apply(DBModule, close, [Handler]),
 
-            leo_utils:file_delete_all(RawPath),
+            leo_file:file_delete_all(RawPath),
             file:delete(Path),
 
             case file:make_symlink(TmpPath, Path) of
@@ -291,7 +291,7 @@ handle_call({compact_end, Commit}, _From, #state{db           = DBModule,
                     {stop, Cause, State}
             end;
         _ ->
-            leo_utils:file_delete_all(TmpPath),
+            leo_file:file_delete_all(TmpPath),
             {reply, ok, State}
     end;
 
@@ -329,7 +329,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
 gen_file_raw_path(FilePath) ->
-    FilePath ++ "_" ++ integer_to_list(leo_utils:now()) ++ "/".
+    FilePath ++ "_" ++ integer_to_list(leo_date:now()) ++ "/".
 
 get_raw_path(SymLinkPath) ->
     case file:read_link(SymLinkPath) of
