@@ -48,12 +48,12 @@ open(Path) ->
 -spec(open(string(), list()) ->
              {error, any()} | {ok, pid()}).
 open(Path, Config) ->
-    WriteBufferMin  = proplists:get_value(write_buffer_size_min, Config,      256 * 1024),
-    WriteBufferMax  = proplists:get_value(write_buffer_size_max, Config, 3 * 1024 * 1024),
+    WriteBufferMin  = leo_misc:get_value(write_buffer_size_min, Config,      256 * 1024),
+    WriteBufferMax  = leo_misc:get_value(write_buffer_size_max, Config, 3 * 1024 * 1024),
     WriteBufferSize = WriteBufferMin + random:uniform(1 + WriteBufferMax - WriteBufferMin),
-    MaxOpenFiles    = proplists:get_value(max_open_files,  Config, ?DEF_MAX_OPEN_FILES),
-    CacheSize       = proplists:get_value(cache_size,      Config, ?DEF_CACHE_SIZE),
-    BlockSize       = proplists:get_value(block_size,      Config, ?DEF_BLOCK_SIZE),
+    MaxOpenFiles    = leo_misc:get_value(max_open_files,  Config, ?DEF_MAX_OPEN_FILES),
+    CacheSize       = leo_misc:get_value(cache_size,      Config, ?DEF_CACHE_SIZE),
+    BlockSize       = leo_misc:get_value(block_size,      Config, ?DEF_BLOCK_SIZE),
     Options = [
                {create_if_missing, true},
                {write_buffer_size, WriteBufferSize},
