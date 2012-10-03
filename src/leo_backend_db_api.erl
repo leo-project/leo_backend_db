@@ -303,7 +303,6 @@ start_app() ->
         {error, {already_started, Module}} ->
             ok;
         Error ->
-            ?debugVal(Error),
             Error
     end.
 
