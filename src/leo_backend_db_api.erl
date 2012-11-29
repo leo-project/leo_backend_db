@@ -113,12 +113,7 @@ stop(InstanceName) ->
             true = ets:delete(?ETS_TABLE_NAME, InstanceName),            
             lists:foreach(
               fun(Id) ->
-                      case supervisor:terminate_child(leo_backend_db_sup, Id) of
-                          ok ->
-                              supervisor:delete_child(leo_backend_db_sup, Id);
-                          Error ->
-                              Error
-                      end
+                      leo_backend_db_server:stop(Id)
               end, List),
             ok
     end.
