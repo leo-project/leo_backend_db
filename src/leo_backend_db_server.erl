@@ -54,7 +54,8 @@
          get_db_raw_filepath/1
         ]).
 
--record(state, {db           :: atom(),
+-record(state, {id           :: atom(),
+                db           :: atom(),
                 path         :: string(),
                 raw_path     :: string(),
                 tmp_raw_path :: string(),
@@ -67,9 +68,12 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 start_link(Id, DBModule, Path) ->
-    gen_server:start_link({local, Id}, ?MODULE, [DBModule, Path], []).
+    gen_server:start_link({local, Id}, ?MODULE, [Id, DBModule, Path], []).
 
 stop(Id) ->
+    error_logger:info_msg("~p,~p,~p,~p~n",
+                          [{module, ?MODULE_STRING}, {function, "stop/1"},
+                           {line, ?LINE}, {body, Id}]),
     gen_server:call(Id, stop).
 
 
@@ -164,12 +168,13 @@ get_db_raw_filepath(Id) ->
 %%                         ignore               |
 %%                         {stop, Reason}
 %% Description: Initiates the server
-init([leo_backend_db_ets = DBModule, Table]) ->
+init([Id, leo_backend_db_ets = DBModule, Table]) ->
     ok = DBModule:open(Table),
-    {ok, #state{db       = DBModule,
+    {ok, #state{id       = Id,
+                db       = DBModule,
                 handler  = list_to_atom(Table)}};
 
-init([DBModule, Path0]) ->
+init([Id, DBModule, Path0]) ->
     {ok, Curr} = file:get_cwd(),
     Path1 = case Path0 of
                 "/"   ++ _Rest -> Path0;
@@ -182,7 +187,8 @@ init([DBModule, Path0]) ->
         {ok, RawPath} ->
             case DBModule:open(Path0) of
                 {ok, Handler} ->
-                    {ok, #state{db       = DBModule,
+                    {ok, #state{id       = Id,
+                                db       = DBModule,
                                 path     = Path1,
                                 raw_path = RawPath,
                                 handler  = Handler}};
@@ -195,8 +201,8 @@ init([DBModule, Path0]) ->
 
 handle_call(stop, _From, #state{db = DBModule,
                                 handler = Handler} = State) ->
-    erlang:apply(DBModule, close, [Handler]),
-    {stop, normal, ok, State};
+    catch erlang:apply(DBModule, close, [Handler]),
+    {stop, shutdown, ok, State};
 
 
 %%--------------------------------------------------------------------
@@ -317,7 +323,13 @@ handle_info(_Info, State) ->
 %% terminate. It should be the opposite of Module:init/1 and do any necessary
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{id      = Id,
+                          db      = DBModule,
+                          handler = Handler}) ->
+    error_logger:info_msg("~p,~p,~p,~p~n",
+                          [{module, ?MODULE_STRING}, {function, "terminate/2"},
+                           {line, ?LINE}, {body, Id}]),
+    catch erlang:apply(DBModule, close, [Handler]),
     ok.
 
 %% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
