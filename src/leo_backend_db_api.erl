@@ -86,7 +86,7 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
             error_logger:error_msg("~p,~p,~p,~p~n",
                                    [{module, ?MODULE_STRING}, {function, "new/4"},
                                     {line, ?LINE}, {body, "NOT started supervisor"}]),
-            exit('not_initialized');
+            exit(not_initialized);
         SupRef ->
             case supervisor:count_children(SupRef) of
                 [{specs,_},{active,Active},{supervisors,_},{workers,Workers}] when Active == Workers ->
@@ -103,7 +103,12 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                                            [{module, ?MODULE_STRING}, {function, "new/4"},
                                             {line, ?LINE},
                                             {body, "Could NOT start worker processes"}]),
-                    leo_backend_db_sup:stop()
+                    case leo_backend_db_sup:stop() of
+                        ok ->
+                            exit(invalid_launch);
+                        not_started ->
+                            exit(noproc)
+                    end
             end
     end.
 
