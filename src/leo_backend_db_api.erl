@@ -83,7 +83,10 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
 
     case whereis(leo_backend_db_sup) of
         undefined ->
-            {error, "NOT started supervisor"};
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING}, {function, "new/4"},
+                                    {line, ?LINE}, {body, "NOT started supervisor"}]),
+            exit('not_initialized');
         SupRef ->
             case supervisor:count_children(SupRef) of
                 [{specs,_},{active,Active},{supervisors,_},{workers,Workers}] when Active == Workers ->
@@ -96,7 +99,11 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                     end,
                     ok;
                 _ ->
-                    {error, "Could NOT started worker processes"}
+                    error_logger:error_msg("~p,~p,~p,~p~n",
+                                           [{module, ?MODULE_STRING}, {function, "new/4"},
+                                            {line, ?LINE},
+                                            {body, "Could NOT start worker processes"}]),
+                    leo_backend_db_sup:stop()
             end
     end.
 
@@ -110,10 +117,10 @@ stop(InstanceName) ->
         [] ->
             {error, not_found};
         [{_, List}|_] ->
-            true = ets:delete(?ETS_TABLE_NAME, InstanceName),            
+            true = ets:delete(?ETS_TABLE_NAME, InstanceName),
             lists:foreach(
               fun(Id) ->
-                      leo_backend_db_server:stop(Id)
+                      catch leo_backend_db_server:stop(Id)
               end, List),
             ok
     end.

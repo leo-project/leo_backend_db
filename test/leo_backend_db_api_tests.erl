@@ -64,8 +64,7 @@ backend_db_test_() ->
      [{with, [T]} || T <- [fun all_bitcask_/1,
                            fun all_leveldb_/1,
                            fun all_ets_/1,
-                           fun compact_/1,
-                           fun proper_/1
+                           fun compact_/1
                           ]]}.
 
 setup() ->
@@ -78,7 +77,6 @@ setup() ->
 teardown(_) ->
     os:cmd("rm -rf ./work"),
     meck:unload(),
-    leo_backend_db_sup:stop(),
     application:stop(leo_backend_db),
     ok.
 
@@ -122,7 +120,6 @@ inspect(Instance, BackendDb, Path) ->
           end,
     ?assertEqual(not_found, leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun)),
 
-
     %% #3 [get, fetch, first, status]
     lists:foreach(fun({K,V}) ->
                           ok = leo_backend_db_api:put(Instance, K, V)
@@ -144,12 +141,8 @@ inspect(Instance, BackendDb, Path) ->
     ?assertEqual(?NUM_OF_PROCS, length(Res4)),
 
     {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun),
-
     ?assertEqual(5, length(Res5)),
-
-    ok = leo_backend_db_api:stop(Instance),
-    [{specs,_},{active,Active1},{supervisors,_},{workers,Workers1}] = supervisor:count_children(leo_backend_db_sup),
-    ?assertEqual({0,0}, {Active1,Workers1}),
+    ?debugVal(ok),
     ok.
 
 
@@ -179,12 +172,12 @@ compact_(_) ->
     ok = leo_backend_db_api:compact_put(Id, Key, Val),
     ok = leo_backend_db_api:compact_end(Id, true),
     {ok,Val} = leo_backend_db_api:get(Id, Key),
+    ?debugVal(ok),
     ok.
 
-proper_(_) ->
-    Res = proper:module(leo_backend_db_api_prop),
-    ?assertEqual([], Res),
-    ok.
+
+proper_test_() ->
+    {timeout, 60000, ?_assertEqual([], proper:module(leo_backend_db_api_prop))}.
 
 -endif.
 
