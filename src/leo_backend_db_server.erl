@@ -62,6 +62,8 @@
                 tmp_handler  :: pid(),
                 handler      :: pid()}).
 
+-define(DEF_TIMEOUT, 30000).
+
 %%--------------------------------------------------------------------
 %% API
 %%--------------------------------------------------------------------
@@ -74,7 +76,7 @@ stop(Id) ->
     error_logger:info_msg("~p,~p,~p,~p~n",
                           [{module, ?MODULE_STRING}, {function, "stop/1"},
                            {line, ?LINE}, {body, Id}]),
-    gen_server:call(Id, stop).
+    gen_server:call(Id, stop, ?DEF_TIMEOUT).
 
 
 %%--------------------------------------------------------------------
@@ -85,7 +87,7 @@ stop(Id) ->
 -spec(put(Id::atom(), KeyBin::binary(), ValueBin::binary()) ->
              ok | {error, any()}).
 put(Id, KeyBin, ValueBin) ->
-    gen_server:call(Id, {put, KeyBin, ValueBin}).
+    gen_server:call(Id, {put, KeyBin, ValueBin}, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve an object from backend-db.
@@ -93,7 +95,7 @@ put(Id, KeyBin, ValueBin) ->
 -spec(get(Id::atom(), KeyBin::binary()) ->
              {ok, any()} | {error, any()}).
 get(Id, KeyBin) ->
-    gen_server:call(Id, {get, KeyBin}).
+    gen_server:call(Id, {get, KeyBin}, ?DEF_TIMEOUT).
 
 
 %% @doc Delete an object from backend-db.
@@ -101,7 +103,7 @@ get(Id, KeyBin) ->
 -spec(delete(Id::atom(), KeyBin::binary()) ->
              ok | {error, any()}).
 delete(Id, KeyBin) ->
-    gen_server:call(Id, {delete, KeyBin}).
+    gen_server:call(Id, {delete, KeyBin}, ?DEF_TIMEOUT).
 
 
 %% @doc Fetch records from backend-db.
@@ -109,7 +111,7 @@ delete(Id, KeyBin) ->
 -spec(fetch(Id::atom(), KeyBin::binary(), Fun::function()) ->
              {ok, list()} | not_found | {error, any()}).
 fetch(Id, KeyBin, Fun) ->
-    gen_server:call(Id, {fetch, KeyBin, Fun}).
+    gen_server:call(Id, {fetch, KeyBin, Fun}, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve a first record from backend-db.
@@ -117,7 +119,7 @@ fetch(Id, KeyBin, Fun) ->
 -spec(first(atom()) ->
              {ok, list()} | {error, any()}).
 first(Id) ->
-    gen_server:call(Id, {first}).
+    gen_server:call(Id, {first}, ?DEF_TIMEOUT).
 
 
 %% Retrieve status from backend-db.
@@ -125,7 +127,7 @@ first(Id) ->
 -spec(status(atom()) ->
              list()).
 status(Id) ->
-    gen_server:call(Id, {status}).
+    gen_server:call(Id, {status}, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to start a compaction.
@@ -133,7 +135,7 @@ status(Id) ->
 -spec(compact_start(atom()) ->
              ok | {error, any()}).
 compact_start(Id) ->
-    gen_server:call(Id, {compact_start}).
+    gen_server:call(Id, {compact_start}, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to end a compaction.
@@ -141,7 +143,7 @@ compact_start(Id) ->
 -spec(compact_end(atom(), boolean()) ->
              ok | {error, any()}).
 compact_end(Id, Commit) ->
-    gen_server:call(Id, {compact_end, Commit}).
+    gen_server:call(Id, {compact_end, Commit}, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to put a record to a temporary new data file.
@@ -149,7 +151,7 @@ compact_end(Id, Commit) ->
 -spec(compact_put(atom(), KeyBin::binary(), ValueBin::binary()) ->
              ok | {error, any()}).
 compact_put(Id, KeyBin, ValueBin) ->
-    gen_server:call(Id, {compact_put, KeyBin, ValueBin}).
+    gen_server:call(Id, {compact_put, KeyBin, ValueBin}, ?DEF_TIMEOUT).
 
 
 %% @doc get database file path for calculating disk size.
@@ -157,7 +159,7 @@ compact_put(Id, KeyBin, ValueBin) ->
 -spec(get_db_raw_filepath(atom()) ->
              ok | {error, any()}).
 get_db_raw_filepath(Id) ->
-    gen_server:call(Id, {get_db_raw_filepath}).
+    gen_server:call(Id, {get_db_raw_filepath}, ?DEF_TIMEOUT).
 
 
 %%--------------------------------------------------------------------
