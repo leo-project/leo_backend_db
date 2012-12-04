@@ -72,8 +72,6 @@ prop_db() ->
                     begin
                         leo_backend_db_api:new(?INSTANCE_NAME, ?NUM_OF_PROCS, Type, ?DB_PATH),
                         {H,S,Res} = run_commands(?MODULE, Cmds),
-
-                        leo_backend_db_api:stop(?INSTANCE_NAME),
                         application:stop(leo_backend_db),
                         os:cmd("rm -rf ./db"),
 

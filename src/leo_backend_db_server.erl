@@ -54,12 +54,15 @@
          get_db_raw_filepath/1
         ]).
 
--record(state, {db           :: atom(),
+-record(state, {id           :: atom(),
+                db           :: atom(),
                 path         :: string(),
                 raw_path     :: string(),
                 tmp_raw_path :: string(),
                 tmp_handler  :: pid(),
                 handler      :: pid()}).
+
+-define(DEF_TIMEOUT, 30000).
 
 %%--------------------------------------------------------------------
 %% API
@@ -67,10 +70,13 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 start_link(Id, DBModule, Path) ->
-    gen_server:start_link({local, Id}, ?MODULE, [DBModule, Path], []).
+    gen_server:start_link({local, Id}, ?MODULE, [Id, DBModule, Path], []).
 
 stop(Id) ->
-    gen_server:call(Id, stop).
+    error_logger:info_msg("~p,~p,~p,~p~n",
+                          [{module, ?MODULE_STRING}, {function, "stop/1"},
+                           {line, ?LINE}, {body, Id}]),
+    gen_server:call(Id, stop, ?DEF_TIMEOUT).
 
 
 %%--------------------------------------------------------------------
@@ -81,7 +87,7 @@ stop(Id) ->
 -spec(put(Id::atom(), KeyBin::binary(), ValueBin::binary()) ->
              ok | {error, any()}).
 put(Id, KeyBin, ValueBin) ->
-    gen_server:call(Id, {put, KeyBin, ValueBin}).
+    gen_server:call(Id, {put, KeyBin, ValueBin}, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve an object from backend-db.
@@ -89,7 +95,7 @@ put(Id, KeyBin, ValueBin) ->
 -spec(get(Id::atom(), KeyBin::binary()) ->
              {ok, any()} | {error, any()}).
 get(Id, KeyBin) ->
-    gen_server:call(Id, {get, KeyBin}).
+    gen_server:call(Id, {get, KeyBin}, ?DEF_TIMEOUT).
 
 
 %% @doc Delete an object from backend-db.
@@ -97,7 +103,7 @@ get(Id, KeyBin) ->
 -spec(delete(Id::atom(), KeyBin::binary()) ->
              ok | {error, any()}).
 delete(Id, KeyBin) ->
-    gen_server:call(Id, {delete, KeyBin}).
+    gen_server:call(Id, {delete, KeyBin}, ?DEF_TIMEOUT).
 
 
 %% @doc Fetch records from backend-db.
@@ -105,7 +111,7 @@ delete(Id, KeyBin) ->
 -spec(fetch(Id::atom(), KeyBin::binary(), Fun::function()) ->
              {ok, list()} | not_found | {error, any()}).
 fetch(Id, KeyBin, Fun) ->
-    gen_server:call(Id, {fetch, KeyBin, Fun}).
+    gen_server:call(Id, {fetch, KeyBin, Fun}, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve a first record from backend-db.
@@ -113,7 +119,7 @@ fetch(Id, KeyBin, Fun) ->
 -spec(first(atom()) ->
              {ok, list()} | {error, any()}).
 first(Id) ->
-    gen_server:call(Id, {first}).
+    gen_server:call(Id, {first}, ?DEF_TIMEOUT).
 
 
 %% Retrieve status from backend-db.
@@ -121,7 +127,7 @@ first(Id) ->
 -spec(status(atom()) ->
              list()).
 status(Id) ->
-    gen_server:call(Id, {status}).
+    gen_server:call(Id, {status}, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to start a compaction.
@@ -129,7 +135,7 @@ status(Id) ->
 -spec(compact_start(atom()) ->
              ok | {error, any()}).
 compact_start(Id) ->
-    gen_server:call(Id, {compact_start}).
+    gen_server:call(Id, {compact_start}, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to end a compaction.
@@ -137,7 +143,7 @@ compact_start(Id) ->
 -spec(compact_end(atom(), boolean()) ->
              ok | {error, any()}).
 compact_end(Id, Commit) ->
-    gen_server:call(Id, {compact_end, Commit}).
+    gen_server:call(Id, {compact_end, Commit}, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to put a record to a temporary new data file.
@@ -145,7 +151,7 @@ compact_end(Id, Commit) ->
 -spec(compact_put(atom(), KeyBin::binary(), ValueBin::binary()) ->
              ok | {error, any()}).
 compact_put(Id, KeyBin, ValueBin) ->
-    gen_server:call(Id, {compact_put, KeyBin, ValueBin}).
+    gen_server:call(Id, {compact_put, KeyBin, ValueBin}, ?DEF_TIMEOUT).
 
 
 %% @doc get database file path for calculating disk size.
@@ -153,7 +159,7 @@ compact_put(Id, KeyBin, ValueBin) ->
 -spec(get_db_raw_filepath(atom()) ->
              ok | {error, any()}).
 get_db_raw_filepath(Id) ->
-    gen_server:call(Id, {get_db_raw_filepath}).
+    gen_server:call(Id, {get_db_raw_filepath}, ?DEF_TIMEOUT).
 
 
 %%--------------------------------------------------------------------
@@ -164,12 +170,13 @@ get_db_raw_filepath(Id) ->
 %%                         ignore               |
 %%                         {stop, Reason}
 %% Description: Initiates the server
-init([leo_backend_db_ets = DBModule, Table]) ->
+init([Id, leo_backend_db_ets = DBModule, Table]) ->
     ok = DBModule:open(Table),
-    {ok, #state{db       = DBModule,
+    {ok, #state{id       = Id,
+                db       = DBModule,
                 handler  = list_to_atom(Table)}};
 
-init([DBModule, Path0]) ->
+init([Id, DBModule, Path0]) ->
     {ok, Curr} = file:get_cwd(),
     Path1 = case Path0 of
                 "/"   ++ _Rest -> Path0;
@@ -182,7 +189,8 @@ init([DBModule, Path0]) ->
         {ok, RawPath} ->
             case DBModule:open(Path0) of
                 {ok, Handler} ->
-                    {ok, #state{db       = DBModule,
+                    {ok, #state{id       = Id,
+                                db       = DBModule,
                                 path     = Path1,
                                 raw_path = RawPath,
                                 handler  = Handler}};
@@ -195,8 +203,8 @@ init([DBModule, Path0]) ->
 
 handle_call(stop, _From, #state{db = DBModule,
                                 handler = Handler} = State) ->
-    erlang:apply(DBModule, close, [Handler]),
-    {stop, normal, ok, State};
+    catch erlang:apply(DBModule, close, [Handler]),
+    {stop, shutdown, ok, State};
 
 
 %%--------------------------------------------------------------------
@@ -317,7 +325,13 @@ handle_info(_Info, State) ->
 %% terminate. It should be the opposite of Module:init/1 and do any necessary
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{id      = Id,
+                          db      = DBModule,
+                          handler = Handler}) ->
+    error_logger:info_msg("~p,~p,~p,~p~n",
+                          [{module, ?MODULE_STRING}, {function, "terminate/2"},
+                           {line, ?LINE}, {body, Id}]),
+    catch erlang:apply(DBModule, close, [Handler]),
     ok.
 
 %% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}

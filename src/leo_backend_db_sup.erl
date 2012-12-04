@@ -28,6 +28,9 @@
 -author('Yosuke Hara').
 
 -behaviour(supervisor).
+
+-include_lib("eunit/include/eunit.hrl").
+
 %% External API
 -export([start_link/0,
          stop/0]).
@@ -51,9 +54,15 @@ start_link() ->
 stop() ->
     case whereis(?MODULE) of
         Pid when is_pid(Pid) == true ->
+            List = supervisor:which_children(Pid),
+            Len  = length(List),
+
+            ok = terminate_children(List),
+            timer:sleep(Len * 100),
             exit(Pid, shutdown),
             ok;
-        _ -> not_started
+        _ ->
+            not_started
     end.
 
 %% ---------------------------------------------------------------------
@@ -66,11 +75,15 @@ stop() ->
 init([]) ->
     {ok, {{one_for_one, 5, 60}, []}}.
 
-    %% {ok, {{simple_one_for_one, 5, 60},
-    %%       [{leo_backend_db_server, {leo_backend_db_server, start_link, []},
-    %%         permanent, 2000, worker, [leo_backend_db_server]}]}}.
 
 %% ---------------------------------------------------------------------
 %% Inner Function(s)
 %% ---------------------------------------------------------------------
+terminate_children([]) ->
+    ok;
+terminate_children([{Id,_Pid, worker, [Mod|_]}|T]) ->
+    Mod:stop(Id),
+    terminate_children(T);
+terminate_children([_|T]) ->
+    terminate_children(T).
 

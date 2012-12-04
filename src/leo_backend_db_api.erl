@@ -83,7 +83,10 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
 
     case whereis(leo_backend_db_sup) of
         undefined ->
-            {error, "NOT started supervisor"};
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING}, {function, "new/4"},
+                                    {line, ?LINE}, {body, "NOT started supervisor"}]),
+            exit(not_initialized);
         SupRef ->
             case supervisor:count_children(SupRef) of
                 [{specs,_},{active,Active},{supervisors,_},{workers,Workers}] when Active == Workers ->
@@ -96,7 +99,16 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                     end,
                     ok;
                 _ ->
-                    {error, "Could NOT started worker processes"}
+                    error_logger:error_msg("~p,~p,~p,~p~n",
+                                           [{module, ?MODULE_STRING}, {function, "new/4"},
+                                            {line, ?LINE},
+                                            {body, "Could NOT start worker processes"}]),
+                    case leo_backend_db_sup:stop() of
+                        ok ->
+                            exit(invalid_launch);
+                        not_started ->
+                            exit(noproc)
+                    end
             end
     end.
 
@@ -110,15 +122,10 @@ stop(InstanceName) ->
         [] ->
             {error, not_found};
         [{_, List}|_] ->
-            true = ets:delete(?ETS_TABLE_NAME, InstanceName),            
+            true = ets:delete(?ETS_TABLE_NAME, InstanceName),
             lists:foreach(
               fun(Id) ->
-                      case supervisor:terminate_child(leo_backend_db_sup, Id) of
-                          ok ->
-                              supervisor:delete_child(leo_backend_db_sup, Id);
-                          Error ->
-                              Error
-                      end
+                      catch leo_backend_db_server:stop(Id)
               end, List),
             ok
     end.
@@ -302,8 +309,11 @@ start_app() ->
             ok;
         {error, {already_started, Module}} ->
             ok;
-        Error ->
-            Error
+        {error, Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING}, {function, "start_app/0"},
+                                    {line, ?LINE}, {body, Cause}]),
+            {exit, Cause}
     end.
 
 
