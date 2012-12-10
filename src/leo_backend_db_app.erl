@@ -39,6 +39,7 @@ start(_Type, _Args) ->
     leo_backend_db_sup:start_link().
 
 stop(_State) ->
+    leo_backend_db_sup:stop(),
     ok.
 
 

@@ -201,9 +201,7 @@ init([Id, DBModule, Path0]) ->
             {stop, Cause}
     end.
 
-handle_call(stop, _From, #state{db = DBModule,
-                                handler = Handler} = State) ->
-    catch erlang:apply(DBModule, close, [Handler]),
+handle_call(stop, _From, State) ->
     {stop, shutdown, ok, State};
 
 
