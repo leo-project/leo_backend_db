@@ -85,6 +85,9 @@ open1(Path, Options) ->
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause};
         {error, Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING}, {function, "open/1"},
+                                    {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
 
