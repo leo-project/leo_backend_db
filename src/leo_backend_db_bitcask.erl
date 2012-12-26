@@ -104,6 +104,9 @@ put(Handler, Key, Value) ->
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause};
         {error, Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING}, {function, "put/3"},
+                                    {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
 
