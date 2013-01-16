@@ -233,7 +233,7 @@ backend_mod(_) ->
 %% @doc Retrieve a process status. running represents doing compaction, idle is not.
 -spec(get_pid_status(atom()) -> running | idle ).
 get_pid_status(Pid) ->
-    case application:get_env(?APP_NAME, Pid) of
+    case leo_misc:get_env(?APP_NAME, Pid) of
         undefined ->
             idle;
         {ok, Status} ->
@@ -245,12 +245,12 @@ get_pid_status(Pid) ->
 -spec(compact_start(atom()) ->
              ok | {error, any()}).
 compact_start(InstanceName) ->
-    Id = get_object_storage_pid(InstanceName, none),
-    case get_pid_status(Id) of
+    Pid = get_object_storage_pid(InstanceName, none),
+    case get_pid_status(Pid) of
         idle ->
             %% invoke server method
-            ok = application:set_env(?APP_NAME, Id, running),
-            ?SERVER_MODULE:compact_start(Id);
+            ok = leo_misc:set_env(?APP_NAME, Pid, running),
+            ?SERVER_MODULE:compact_start(Pid);
         running ->
             {error, invalid_compaction_status}
     end.
@@ -260,14 +260,14 @@ compact_start(InstanceName) ->
 -spec(compact_end(atom(), boolean()) ->
              ok | {error, any()}).
 compact_end(InstanceName, Commit) ->
-    Id = get_object_storage_pid(InstanceName, none),
-    case get_pid_status(Id) of
+    Pid = get_object_storage_pid(InstanceName, none),
+    case get_pid_status(Pid) of
         idle ->
             {error, invalid_compaction_status};
         running ->
             %% invoke server method
-            ok = application:set_env(?APP_NAME, Id, idle),
-            ?SERVER_MODULE:compact_end(Id, Commit)
+            ok = leo_misc:set_env(?APP_NAME, Pid, idle),
+            ?SERVER_MODULE:compact_end(Pid, Commit)
     end.
 
 
@@ -305,6 +305,7 @@ start_app() ->
     Module = leo_backend_db,
     case application:start(Module) of
         ok ->
+            ok = leo_misc:init_env(),
             catch ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
             ok;
         {error, {already_started, Module}} ->
