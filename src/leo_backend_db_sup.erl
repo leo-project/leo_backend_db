@@ -34,7 +34,7 @@
 
 %% External API
 -export([start_link/0,
-         stop/0,
+         stop/0, stop/1,
          start_child/4, start_child/5]).
 
 %% Callbacks
@@ -57,16 +57,20 @@ start_link() ->
 stop() ->
     case whereis(?MODULE) of
         Pid when is_pid(Pid) == true ->
-            List = supervisor:which_children(Pid),
-            Len  = length(List),
-
-            ok = terminate_children(List),
-            timer:sleep(Len * 100),
-            exit(Pid, shutdown),
-            ok;
+            stop(Pid);
         _ ->
             not_started
     end.
+
+stop(Pid) ->
+    List = supervisor:which_children(Pid),
+    Len  = length(List),
+
+    ok = terminate_children(List),
+    timer:sleep(Len * 100),
+    exit(Pid, shutdown),
+    ok.
+
 
 %% ---------------------------------------------------------------------
 %% Callbacks
