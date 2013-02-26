@@ -35,7 +35,7 @@
 %% External API
 -export([start_link/0,
          stop/0,
-         start_child/4]).
+         start_child/4, start_child/5]).
 
 %% Callbacks
 -export([init/1]).
@@ -89,6 +89,8 @@ init([]) ->
 start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     start_child(?MODULE, InstanceName, NumOfDBProcs, BackendDB, DBRootPath).
 
+-spec(start_child(supervisro:sup_ref(), atom(), pos_integer(), atom(), string()) ->
+             ok | true).
 start_child(SupRef0, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     BackendMod = backend_mod(BackendDB),
     Fun = fun(DBNumber) ->
