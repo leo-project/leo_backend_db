@@ -28,21 +28,17 @@
 -author('Yosuke Hara').
 -author('Yoshiyuki Kanno').
 
+-include("leo_backend_db.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -export([new/4, put/3, get/2, delete/2, fetch/3, first/1,
-         status/1, backend_mod/1,
+         status/1,
          compact_start/1, compact_put/3, compact_end/2,
          get_db_raw_filepath/1,
          stop/1
         ]).
 
--define(ETS_TABLE_NAME, 'leo_backend_db_pd').
--define(SERVER_MODULE,  'leo_backend_db_server').
--define(APP_NAME,       'leo_backend_db').
-
--type(type_of_methods() :: put | get | delete | fetch).
--type(backend_db()      :: bitcask | leveldb | ets).
+-define(SERVER_MODULE, 'leo_backend_db_server').
 
 %%--------------------------------------------------------------------
 %% API
@@ -52,64 +48,12 @@
 -spec(new(atom(), integer(), backend_db(), string()) ->
              ok | {error, any()}).
 new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
-    ok = start_app(),
-
-    BackendMod = backend_mod(BackendDB),
-    Fun = fun(DBNumber) ->
-                  {Id, StrDBNumber} =
-                      case (NumOfDBProcs == 1) of
-                          true ->
-                              {InstanceName, []};
-                          false ->
-                              NewDBNumber =  integer_to_list(DBNumber),
-                              {list_to_atom(atom_to_list(InstanceName)
-                                            ++ "_"
-                                            ++  NewDBNumber), NewDBNumber}
-                      end,
-
-                  Args = [Id, BackendMod, DBRootPath ++ StrDBNumber],
-                  ChildSpec = {Id,
-                               {leo_backend_db_server, start_link, Args},
-                               permanent, 2000, worker, [leo_backend_db_server]},
-                  case supervisor:start_child(leo_backend_db_sup, ChildSpec) of
-                      {ok, _Pid} ->
-                          Id;
-                      Cause ->
-                          io:format("~w:~w - ~w ~p~n", [?MODULE, ?LINE, Id, Cause]),
-                          []
-                  end
-          end,
-    Ret = lists:map(Fun, lists:seq(0, NumOfDBProcs-1)),
-
-    case whereis(leo_backend_db_sup) of
-        undefined ->
-            error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "new/4"},
-                                    {line, ?LINE}, {body, "NOT started supervisor"}]),
-            exit(not_initialized);
-        SupRef ->
-            case supervisor:count_children(SupRef) of
-                [{specs,_},{active,Active},{supervisors,_},{workers,Workers}] when Active == Workers ->
-                    case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
-                        [] ->
-                            true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret});
-                        [{InstanceName, List}|_] ->
-                            true = ets:delete(?ETS_TABLE_NAME, InstanceName),
-                            true = ets:insert(?ETS_TABLE_NAME, {InstanceName, List ++ Ret})
-                    end,
-                    ok;
-                _ ->
-                    error_logger:error_msg("~p,~p,~p,~p~n",
-                                           [{module, ?MODULE_STRING}, {function, "new/4"},
-                                            {line, ?LINE},
-                                            {body, "Could NOT start worker processes"}]),
-                    case leo_backend_db_sup:stop() of
-                        ok ->
-                            exit(invalid_launch);
-                        not_started ->
-                            exit(noproc)
-                    end
-            end
+    case start_app() of
+        ok ->
+            leo_backend_db_sup:start_child(
+              InstanceName, NumOfDBProcs, BackendDB, DBRootPath);
+        {error, Cause} ->
+            {error, Cause}
     end.
 
 
@@ -214,20 +158,6 @@ status(InstanceName) ->
                                 [Res|Acc]
                         end, [], List)
     end.
-
-
-%% @doc Retrieve a backend module name.
-%%
--spec(backend_mod(backend_db()) ->
-             atom()).
-backend_mod(bitcask) ->
-    leo_backend_db_bitcask;
-backend_mod(leveldb) ->
-    leo_backend_db_eleveldb;
-backend_mod(ets) ->
-    leo_backend_db_ets;
-backend_mod(_) ->
-    leo_backend_db_ets.
 
 
 %% @doc Retrieve a process status. running represents doing compaction, idle is not.

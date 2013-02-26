@@ -29,23 +29,26 @@
 
 -behaviour(supervisor).
 
+-include("leo_backend_db.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% External API
 -export([start_link/0,
-         stop/0]).
+         stop/0,
+         start_child/4]).
 
 %% Callbacks
 -export([init/1]).
 
 %%-----------------------------------------------------------------------
-%% External API
+%% API-1
 %%-----------------------------------------------------------------------
 %% @spec () -> ok
 %% @doc start link.
 %% @end
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
 
 %% @spec () -> ok |
 %%             not_started
@@ -76,6 +79,73 @@ init([]) ->
     {ok, {{one_for_one, 5, 60}, []}}.
 
 
+%%-----------------------------------------------------------------------
+%% API-2
+%%-----------------------------------------------------------------------
+%%
+%%
+-spec(start_child(atom(), pos_integer(), atom(), string()) ->
+    ok | true).
+start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
+    BackendMod = backend_mod(BackendDB),
+    Fun = fun(DBNumber) ->
+                  {Id, StrDBNumber} =
+                      case (NumOfDBProcs == 1) of
+                          true ->
+                              {InstanceName, []};
+                          false ->
+                              NewDBNumber =  integer_to_list(DBNumber),
+                              {list_to_atom(atom_to_list(InstanceName)
+                                            ++ "_"
+                                            ++  NewDBNumber), NewDBNumber}
+                      end,
+
+                  Args = [Id, BackendMod, DBRootPath ++ StrDBNumber],
+                  ChildSpec = {Id,
+                               {leo_backend_db_server, start_link, Args},
+                               permanent, 2000, worker, [leo_backend_db_server]},
+                  case supervisor:start_child(leo_backend_db_sup, ChildSpec) of
+                      {ok, _Pid} ->
+                          Id;
+                      Cause ->
+                          io:format("~w:~w - ~w ~p~n", [?MODULE, ?LINE, Id, Cause]),
+                          []
+                  end
+          end,
+    Ret = lists:map(Fun, lists:seq(0, NumOfDBProcs-1)),
+
+    case whereis(leo_backend_db_sup) of
+        undefined ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING}, {function, "new/4"},
+                                    {line, ?LINE}, {body, "NOT started supervisor"}]),
+            exit(not_initialized);
+        SupRef ->
+            case supervisor:count_children(SupRef) of
+                [{specs,_},{active,Active},{supervisors,_},{workers,Workers}] when Active == Workers ->
+                    case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
+                        [] ->
+                            true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret});
+                        [{InstanceName, List}|_] ->
+                            true = ets:delete(?ETS_TABLE_NAME, InstanceName),
+                            true = ets:insert(?ETS_TABLE_NAME, {InstanceName, List ++ Ret})
+                    end,
+                    ok;
+                _ ->
+                    error_logger:error_msg("~p,~p,~p,~p~n",
+                                           [{module, ?MODULE_STRING}, {function, "new/4"},
+                                            {line, ?LINE},
+                                            {body, "Could NOT start worker processes"}]),
+                    case leo_backend_db_sup:stop() of
+                        ok ->
+                            exit(invalid_launch);
+                        not_started ->
+                            exit(noproc)
+                    end
+            end
+    end.
+
+
 %% ---------------------------------------------------------------------
 %% Inner Function(s)
 %% ---------------------------------------------------------------------
@@ -87,3 +157,16 @@ terminate_children([{Id,_Pid, worker, [Mod|_]}|T]) ->
 terminate_children([_|T]) ->
     terminate_children(T).
 
+
+%% @doc Retrieve a backend module name.
+%% @private
+-spec(backend_mod(backend_db()) ->
+             atom()).
+backend_mod(bitcask) ->
+    leo_backend_db_bitcask;
+backend_mod(leveldb) ->
+    leo_backend_db_eleveldb;
+backend_mod(ets) ->
+    leo_backend_db_ets;
+backend_mod(_) ->
+    leo_backend_db_ets.
