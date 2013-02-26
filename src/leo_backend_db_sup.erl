@@ -92,6 +92,9 @@ start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
 -spec(start_child(supervisro:sup_ref(), atom(), pos_integer(), atom(), string()) ->
              ok | true).
 start_child(SupRef0, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
+    ok = leo_misc:init_env(),
+    catch ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
+
     BackendMod = backend_mod(BackendDB),
     Fun = fun(DBNumber) ->
                   {Id, StrDBNumber} =
