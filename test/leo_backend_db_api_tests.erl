@@ -75,9 +75,11 @@ setup() ->
     ok.
 
 teardown(_) ->
+    leo_backend_db_sup:stop(),
+    application:stop(leo_backend_db),
+    timer:sleep(200),
     os:cmd("rm -rf ./work"),
     meck:unload(),
-    application:stop(leo_backend_db),
     ok.
 
 all_bitcask_(_) ->

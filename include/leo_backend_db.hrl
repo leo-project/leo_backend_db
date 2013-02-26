@@ -1,8 +1,8 @@
 %%======================================================================
 %%
-%% Leo Backend DB
+%% Leo Backend-DB
 %%
-%% Copyright (c) 2012 Rakuten, Inc.
+%% Copyright (c) 2012
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,15 +18,13 @@
 %% specific language governing permissions and limitations
 %% under the License.
 %%
+%% ---------------------------------------------------------------------
+%% Leo Object Storage
+%%
 %%======================================================================
-{application, leo_backend_db,
-  [
-    {description, "Leo Backend db"},
-    {vsn, "0.12.6"},
-    {id, "leo_backend_db"},
-    {registered,   []},
-    {applications, [kernel, stdlib]},
-    {mod, {leo_backend_db_app, []}},
-    {env, [{profile, false}]}
-  ]
-}.
+
+-define(ETS_TABLE_NAME, 'leo_backend_db_pd').
+-define(APP_NAME,       'leo_backend_db').
+
+-type(type_of_methods() :: put | get | delete | fetch).
+-type(backend_db()      :: bitcask | leveldb | ets).
