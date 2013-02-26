@@ -85,8 +85,11 @@ init([]) ->
 %%
 %%
 -spec(start_child(atom(), pos_integer(), atom(), string()) ->
-    ok | true).
+             ok | true).
 start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
+    start_child(?MODULE, InstanceName, NumOfDBProcs, BackendDB, DBRootPath).
+
+start_child(SupRef0, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     BackendMod = backend_mod(BackendDB),
     Fun = fun(DBNumber) ->
                   {Id, StrDBNumber} =
@@ -104,7 +107,7 @@ start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                   ChildSpec = {Id,
                                {leo_backend_db_server, start_link, Args},
                                permanent, 2000, worker, [leo_backend_db_server]},
-                  case supervisor:start_child(leo_backend_db_sup, ChildSpec) of
+                  case supervisor:start_child(SupRef0, ChildSpec) of
                       {ok, _Pid} ->
                           Id;
                       Cause ->
@@ -114,34 +117,31 @@ start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
           end,
     Ret = lists:map(Fun, lists:seq(0, NumOfDBProcs-1)),
 
-    case whereis(leo_backend_db_sup) of
-        undefined ->
+    SupRef1 = case is_atom(SupRef0) of
+                  true  -> whereis(SupRef0);
+                  false -> SupRef0
+              end,
+
+    case supervisor:count_children(SupRef1) of
+        [{specs,_},{active,Active},{supervisors,_},{workers,Workers}] when Active == Workers ->
+            case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
+                [] ->
+                    true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret});
+                [{InstanceName, List}|_] ->
+                    true = ets:delete(?ETS_TABLE_NAME, InstanceName),
+                    true = ets:insert(?ETS_TABLE_NAME, {InstanceName, List ++ Ret})
+            end,
+            ok;
+        _ ->
             error_logger:error_msg("~p,~p,~p,~p~n",
                                    [{module, ?MODULE_STRING}, {function, "new/4"},
-                                    {line, ?LINE}, {body, "NOT started supervisor"}]),
-            exit(not_initialized);
-        SupRef ->
-            case supervisor:count_children(SupRef) of
-                [{specs,_},{active,Active},{supervisors,_},{workers,Workers}] when Active == Workers ->
-                    case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
-                        [] ->
-                            true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret});
-                        [{InstanceName, List}|_] ->
-                            true = ets:delete(?ETS_TABLE_NAME, InstanceName),
-                            true = ets:insert(?ETS_TABLE_NAME, {InstanceName, List ++ Ret})
-                    end,
-                    ok;
-                _ ->
-                    error_logger:error_msg("~p,~p,~p,~p~n",
-                                           [{module, ?MODULE_STRING}, {function, "new/4"},
-                                            {line, ?LINE},
-                                            {body, "Could NOT start worker processes"}]),
-                    case leo_backend_db_sup:stop() of
-                        ok ->
-                            exit(invalid_launch);
-                        not_started ->
-                            exit(noproc)
-                    end
+                                    {line, ?LINE},
+                                    {body, "Could NOT start worker processes"}]),
+            case ?MODULE:stop() of
+                ok ->
+                    exit(invalid_launch);
+                not_started ->
+                    exit(noproc)
             end
     end.
 
@@ -164,8 +164,8 @@ terminate_children([_|T]) ->
              atom()).
 backend_mod(bitcask) ->
     leo_backend_db_bitcask;
-backend_mod(leveldb) ->
-    leo_backend_db_eleveldb;
+%% backend_mod(leveldb) ->
+%%     leo_backend_db_eleveldb;
 backend_mod(ets) ->
     leo_backend_db_ets;
 backend_mod(_) ->
