@@ -62,7 +62,6 @@
 backend_db_test_() ->
     {foreach, fun setup/0, fun teardown/1,
      [{with, [T]} || T <- [fun all_bitcask_/1,
-                           %% fun all_leveldb_/1,
                            fun all_ets_/1,
                            fun compact_/1
                           ]]}.
@@ -75,8 +74,8 @@ setup() ->
     ok.
 
 teardown(_) ->
-    leo_backend_db_sup:stop(),
-    application:stop(leo_backend_db),
+    catch leo_backend_db_sup:stop(),
+    catch application:stop(leo_backend_db),
     timer:sleep(200),
     os:cmd("rm -rf ./work"),
     meck:unload(),
