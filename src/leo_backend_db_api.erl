@@ -34,6 +34,7 @@
 -export([new/4, put/3, get/2, delete/2, fetch/3, first/1,
          status/1,
          compact_start/1, compact_put/3, compact_end/2,
+         compact_suspend/1, compact_resume/1,
          get_db_raw_filepath/1,
          stop/1
         ]).
@@ -185,6 +186,19 @@ compact_start(InstanceName) ->
             {error, invalid_compaction_status}
     end.
 
+%% @doc Direct to suspend a compaction. assume InstanceName has only one instance.
+-spec(compact_suspend(atom()) ->
+             ok | {error, any()}).
+compact_suspend(InstanceName) ->
+    Pid = get_object_storage_pid(InstanceName, none),
+    leo_misc:set_env(?APP_NAME, Pid, idle).
+
+%% @doc Direct to resume a compaction. assume InstanceName has only one instance.
+-spec(compact_resume(atom()) ->
+             ok | {error, any()}).
+compact_resume(InstanceName) ->
+    Pid = get_object_storage_pid(InstanceName, none),
+    leo_misc:set_env(?APP_NAME, Pid, running).
 
 %% @doc Direct to end a compaction. assume InstanceName has only one instance.
 -spec(compact_end(atom(), boolean()) ->
