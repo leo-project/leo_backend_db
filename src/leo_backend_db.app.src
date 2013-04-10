@@ -27,6 +27,11 @@
     {registered,   []},
     {applications, [kernel, stdlib]},
     {mod, {leo_backend_db_app, []}},
-    {env, [{profile, false}]}
+    {env, [{profile, false},
+           {bitcask_flags, [{expiry_secs,   -1},
+                            {max_file_size, 16#80000000},
+                            {merge_window,  always}
+                           ]}
+          ]}
   ]
 }.
