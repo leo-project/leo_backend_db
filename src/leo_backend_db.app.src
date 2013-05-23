@@ -1,3 +1,4 @@
+%% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %%======================================================================
 %%
 %% Leo Backend DB
@@ -20,18 +21,18 @@
 %%
 %%======================================================================
 {application, leo_backend_db,
-  [
-    {description, "Leo Backend db"},
-    {vsn, "0.12.11"},
-    {id, "leo_backend_db"},
-    {registered,   []},
-    {applications, [kernel, stdlib]},
-    {mod, {leo_backend_db_app, []}},
-    {env, [{profile, false},
-           {bitcask_flags, [{expiry_secs,   -1},
-                            {max_file_size, 16#80000000},
-                            {merge_window,  always}
-                           ]}
-          ]}
-  ]
+ [
+  {description, "Leo Backend db"},
+  {vsn, "0.12.11"},
+  {id, "leo_backend_db"},
+  {registered,   []},
+  {applications, [kernel, stdlib]},
+  {mod, {leo_backend_db_app, []}},
+  {env, [{profile, false},
+         {bitcask_flags, [{expiry_secs,   -1},
+                          {max_file_size, 16#80000000},
+                          {merge_window,  always}
+                         ]}
+        ]}
+ ]
 }.
