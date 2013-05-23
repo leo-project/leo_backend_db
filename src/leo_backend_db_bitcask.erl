@@ -41,7 +41,11 @@ open(Path) ->
 -spec(open(string(), list()) ->
              {ok, pid()} | {error, any()}).
 open(Path, Options) ->
-    case catch bitcask:open(Path, Options) of
+    Flags = case application:get_env('leo_backend_db', 'bitcask_flags') of
+                {ok, V} -> V;
+                _ -> []
+            end,
+    case catch bitcask:open(Path, Options ++ Flags) of
         {error, Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
                                    [{module, ?MODULE_STRING}, {function, "open/2"},
