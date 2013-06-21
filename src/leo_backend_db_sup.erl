@@ -112,11 +112,15 @@ start_child(SupRef0, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                                             ++  NewDBNumber), NewDBNumber}
                       end,
 
-                  Args = [Id, BackendMod, DBRootPath ++ StrDBNumber],
+                  Path = DBRootPath ++ StrDBNumber,
+                  Args = [Id, BackendMod, Path],
                   ChildSpec = {Id,
                                {leo_backend_db_server, start_link, Args},
                                permanent, 2000, worker, [leo_backend_db_server]},
                   case supervisor:start_child(SupRef0, ChildSpec) of
+                      {ok, _Pid} when BackendDB == bitcask ->
+                          ok = bitcask:merge(Path),
+                          Id;
                       {ok, _Pid} ->
                           Id;
                       Cause ->
