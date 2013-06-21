@@ -140,9 +140,9 @@ start_child(SupRef0, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
             case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
                 [] ->
                     true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret});
-                [{InstanceName, List}|_] ->
+                [{InstanceName, _List}|_] ->
                     true = ets:delete(?ETS_TABLE_NAME, InstanceName),
-                    true = ets:insert(?ETS_TABLE_NAME, {InstanceName, List ++ Ret})
+                    true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret})
             end,
             ok;
         _ ->
