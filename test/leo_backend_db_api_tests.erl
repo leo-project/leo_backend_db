@@ -30,10 +30,11 @@
 
 -define(TEST_INSTANCE_NAME1, 'test_bitcask').
 -define(TEST_INSTANCE_NAME2, 'test_leveldb').
+-define(TEST_INSTANCE_NAME3, 'test_ets').
 -define(NUM_OF_PROCS,       8).
 
 -define(BACKEND_DB_BITCASK, 'bitcask').
-%% -define(BACKEND_DB_LEVELDB, 'leveldb').
+-define(BACKEND_DB_LEVELDB, 'leveldb').
 -define(BACKEND_DB_ETS,     'ets').
 
 -define(PATH1,              "./work/backenddb1").
@@ -62,6 +63,7 @@
 backend_db_test_() ->
     {foreach, fun setup/0, fun teardown/1,
      [{with, [T]} || T <- [fun all_bitcask_/1,
+                           fun all_eleveldb_/1,
                            fun all_ets_/1,
                            fun compact_/1
                           ]]}.
@@ -85,12 +87,12 @@ all_bitcask_(_) ->
     inspect(?TEST_INSTANCE_NAME1, ?BACKEND_DB_BITCASK, ?PATH1),
     ok.
 
-%% all_leveldb_(_) ->
-%%     inspect(?TEST_INSTANCE_NAME2, ?BACKEND_DB_LEVELDB, ?PATH2),
-%%     ok.
+all_eleveldb_(_) ->
+    inspect(?TEST_INSTANCE_NAME2, ?BACKEND_DB_LEVELDB, ?PATH2),
+    ok.
 
 all_ets_(_) ->
-    inspect(?TEST_INSTANCE_NAME2, ?BACKEND_DB_ETS, "test_table"),
+    inspect(?TEST_INSTANCE_NAME3, ?BACKEND_DB_ETS, "test_table"),
     ok.
 
 inspect(Instance, BackendDb, Path) ->
@@ -139,11 +141,12 @@ inspect(Instance, BackendDb, Path) ->
 
     {ok, {_, _}} = leo_backend_db_api:first(Instance),
     Res4 =  leo_backend_db_api:status(Instance),
+    ?debugVal(Res4),
     ?assertEqual(?NUM_OF_PROCS, length(Res4)),
 
     {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun),
+    ?debugVal(Res5),
     ?assertEqual(5, length(Res5)),
-    ?debugVal(ok),
     ok.
 
 
