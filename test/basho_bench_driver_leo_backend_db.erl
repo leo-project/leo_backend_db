@@ -41,6 +41,7 @@ new(1) ->
     random:seed(),
     Ret = leo_backend_db_api:status(InstanceName),
     io:format(user, "[start]status:~p~n", [Ret]),
+    erlang:put(worker_id, 1),
     {ok, InstanceName};
 new(_) ->
     InstanceName = basho_bench_config:get(instance_name, 'test_backend_db'),
@@ -77,7 +78,16 @@ run(prefix_put, KeyGen, ValueGen, State) ->
 
 run(prefix_get, _KeyGen, _ValueGen, State) ->
     TargetPrefix = gen_prefix(),
-    Fun = fun(K, _V, Acc) ->
+    BackendDB    = basho_bench_config:get(backend_db,    'bitcask'),
+    Fun = case BackendDB of
+        'bitcask' -> gen_prefix_fun(TargetPrefix);
+        'leveldb' -> gen_prefix_fun(TargetPrefix)
+    end,
+    _List = leo_backend_db_api:fetch(State, TargetPrefix, Fun),
+    {ok, State}.
+
+gen_prefix_fun(TargetPrefix) ->
+    fun(K, _V, Acc) ->
         [PrefixBin|_]= binary:split(K, <<$:>>),
         case PrefixBin of
             TargetPrefix ->
@@ -85,12 +95,8 @@ run(prefix_get, _KeyGen, _ValueGen, State) ->
             _ ->
                 Acc
         end
-    end,
-    _List = leo_backend_db_api:fetch(State, TargetPrefix, Fun),
-%%%    io:format(user, "[debug]prefix 1: list:~p~n", [List]),
-    {ok, State}.
+    end.
 
-%% ${integer}_
 gen_prefix() ->
     NumOfPrefix = basho_bench_config:get(num_of_prefix, 1000),
     IntPrefix = random:uniform(NumOfPrefix),
@@ -98,18 +104,21 @@ gen_prefix() ->
 
 % print status when finished benchmark
 terminate(Reason, State) ->
+    case erlang:get(worker_id) of
+        1 -> finalize(Reason, State);
+        _ -> void
+    end.
+
+finalize(Reason, State) ->
     % debug output for prefix data
-%%%    Fun = fun(K, _V, Acc) ->
-%%%        [PrefixBin|_]= binary:split(K, <<$:>>),
-%%%        case PrefixBin of
-%%%            <<"1">> ->
-%%%                [K|Acc];
-%%%            _ ->
-%%%                Acc
-%%%        end
-%%%    end,
-%%%    List = leo_backend_db_api:fetch(State, <<"1:">>, Fun),
-%%%    io:format(user, "[debug]prefix 1: list:~p~n", [List]),
+    BackendDB    = basho_bench_config:get(backend_db,    'bitcask'),
+    TargetPrefix = <<"123">>,
+    Fun = case BackendDB of
+        'bitcask' -> gen_prefix_fun(TargetPrefix);
+        'leveldb' -> gen_prefix_fun(TargetPrefix)
+    end,
+    List = leo_backend_db_api:fetch(State, TargetPrefix, Fun),
+    io:format(user, "[debug]prefix 123: list:~p~n", [List]),
     Ret = leo_backend_db_api:status(State),
     io:format(user, "[terminate]reason:~p status:~p~n", [Reason, Ret]),
     ok.
