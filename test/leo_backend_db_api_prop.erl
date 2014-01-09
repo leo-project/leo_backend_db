@@ -39,7 +39,7 @@
          postcondition/3]).
 
 
--type db_type() :: 'bitcask' | 'ets'.
+-type db_type() :: 'bitcask' | 'leveldb'.
 
 -record(state, {stored = []  :: [string()],  %% list of objects stored in DB
                 type         :: db_type()
@@ -81,12 +81,12 @@ prop_db() ->
                     end)).
 
 
-
 %% @doc Initialize state
 %%
 initial_state() ->
     #state{}.
 initial_state(Type) ->
+    ?debugVal(Type),
     #state{type = Type}.
 
 
@@ -110,7 +110,6 @@ precondition(_S, {call,_,_,_}) ->
 %% @doc Next-State
 %%
 next_state(S, _V, {call,_,put,[_Instance, Key, _Object]}) ->
-    %% ?debugVal(_V),
     case proplists:is_defined(Key, S#state.stored) of
         false ->
             S#state{stored = S#state.stored ++ [Key]};
@@ -119,15 +118,12 @@ next_state(S, _V, {call,_,put,[_Instance, Key, _Object]}) ->
     end;
 
 next_state(S, _V, {call,_,delete,[_Instance, Key]}) ->
-    %% ?debugVal(_V),
     S#state{stored=proplists:delete(Key, S#state.stored)};
 next_state(S, _V, {call,_,_,_}) ->
-    %% ?debugVal(_V),
     S.
 
 
 %% @doc Post-Condition
 %%
 postcondition(_S,_V,_) ->
-    %% ?debugVal(_V),
     true.
