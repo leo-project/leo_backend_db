@@ -2,7 +2,7 @@
 %%
 %% Leo Backend DB
 %%
-%% Copyright (c) 2012 Rakuten, Inc.
+%% Copyright (c) 2012-2014 Rakuten, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -24,7 +24,7 @@
 %% @end
 %%====================================================================
 -module(leo_backend_db_api_tests).
--author('yosuke hara').
+-author('Yosuke Hara').
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -80,7 +80,9 @@ teardown(_) ->
     catch application:stop(leo_backend_db),
     timer:sleep(200),
     os:cmd("rm -rf ./work"),
+    os:cmd("rm -rf ./db"),
     meck:unload(),
+    timer:sleep(1000),
     ok.
 
 all_bitcask_(_) ->
@@ -141,11 +143,9 @@ inspect(Instance, BackendDb, Path) ->
 
     {ok, {_, _}} = leo_backend_db_api:first(Instance),
     Res4 =  leo_backend_db_api:status(Instance),
-    ?debugVal(Res4),
     ?assertEqual(?NUM_OF_PROCS, length(Res4)),
 
     {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun),
-    ?debugVal(Res5),
     ?assertEqual(5, length(Res5)),
     ok.
 
@@ -176,7 +176,6 @@ compact_(_) ->
     ok = leo_backend_db_api:compact_put(Id, Key, Val),
     ok = leo_backend_db_api:compact_end(Id, true),
     {ok,Val} = leo_backend_db_api:get(Id, Key),
-    ?debugVal(ok),
     ok.
 
 

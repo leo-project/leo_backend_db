@@ -2,7 +2,7 @@
 %%
 %% Leo Backend DB
 %%
-%% Copyright (c) 2012-2013 Rakuten, Inc.
+%% Copyright (c) 2012-2014 Rakuten, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -174,7 +174,7 @@ delete(Handler, Key) ->
 prefix_search(Handler, Key, Fun) ->
     case catch eleveldb:iterator(Handler, []) of
         {ok, Itr} ->
-            case fold_loop(eleveldb:iterator_move(Itr, Key), Itr, Fun, []) of
+            case fold_loop(eleveldb:iterator_move(Itr, Key), Itr, Fun, [], Key) of
                 [] ->
                     not_found;
                 Acc ->
@@ -224,11 +224,25 @@ first(Handler) ->
 %%--------------------------------------------------------------------
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
-fold_loop({error, invalid_iterator}, _Itr, _Fun, Acc0) ->
+fold_loop({error, invalid_iterator}, _Itr, _Fun, Acc0, _Prefix) ->
     Acc0;
-fold_loop({ok, K}, Itr, Fun, Acc0) ->
-    Acc1 = Fun(K, [], Acc0),
-    fold_loop(eleveldb:iterator_move(Itr, next), Itr, Fun, Acc1);
-fold_loop({ok, K, V}, Itr, Fun, Acc0) ->
-    Acc1 = Fun(K, V, Acc0),
-    fold_loop(eleveldb:iterator_move(Itr, next), Itr, Fun, Acc1).
+fold_loop({ok, K}, Itr, Fun, Acc0, Prefix) ->
+    Size = size(Prefix),
+    DstPrefix = binary:part(K, 0, Size),
+    case DstPrefix of
+        Prefix  ->
+            Acc1 = Fun(K, [], Acc0),
+            fold_loop(eleveldb:iterator_move(Itr, prefetch), Itr, Fun, Acc1, Prefix);
+        _ ->
+            Acc0
+    end;
+fold_loop({ok, K, V}, Itr, Fun, Acc0, Prefix) ->
+    Size = size(Prefix),
+    DstPrefix = binary:part(K, 0, Size),
+    case DstPrefix of
+        Prefix ->
+            Acc1 = Fun(K, V, Acc0),
+            fold_loop(eleveldb:iterator_move(Itr, prefetch), Itr, Fun, Acc1, Prefix);
+        _ ->
+            Acc0
+    end.
