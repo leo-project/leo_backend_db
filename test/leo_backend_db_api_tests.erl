@@ -147,6 +147,10 @@ inspect(Instance, BackendDb, Path) ->
 
     {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun),
     ?assertEqual(5, length(Res5)),
+
+    {ok, Res6} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun, 3),
+    ?assertEqual(3, length(Res6)),
+
     ok.
 
 

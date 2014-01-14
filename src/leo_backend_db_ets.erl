@@ -29,7 +29,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([open/1, open/2, close/1, status/1]).
--export([get/2, put/3, delete/2, prefix_search/3, first/1]).
+-export([get/2, put/3, delete/2, prefix_search/4, first/1]).
 
 %% @doc
 %%
@@ -122,16 +122,17 @@ delete(Table, Key) ->
 
 %% @doc Retrieve objects from ets by a keyword.
 %%
--spec(prefix_search(pid(), binary(), function()) ->
+-spec(prefix_search(pid(), binary(), function(), integer()) ->
              {ok, list()} | not_found | {error, any()}).
-prefix_search(Table, _Key, Fun) ->
-    fold1(catch ets:foldl(Fun, [], Table)).
+prefix_search(Table, _Key, Fun, MaxKeys) ->
+    fold1(catch ets:foldl(Fun, [], Table), MaxKeys).
 
-fold1([])                      -> not_found;
-fold1(List) when is_list(List) -> {ok, lists:reverse(List)};
-fold1({'EXIT', Cause})         -> {error, Cause};
-fold1({error, Cause})          -> {error, Cause};
-fold1(_)                       -> {error, 'badarg'}.
+fold1([], _)                      -> not_found;
+fold1(List, MaxKeys) when is_list(List) -> 
+    {ok, lists:sublist(lists:reverse(List), MaxKeys)};
+fold1({'EXIT', Cause}, _)         -> {error, Cause};
+fold1({error, Cause}, _)          -> {error, Cause};
+fold1(_, _)                       -> {error, 'badarg'}.
 
 
 %% @doc Retrieve first record from ets.

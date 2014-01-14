@@ -25,7 +25,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([open/1, open/2, close/1, status/1]).
--export([get/2, put/3, delete/2, prefix_search/3, first/1]).
+-export([get/2, put/3, delete/2, prefix_search/4, first/1]).
 
 -define(DEF_MAX_OPEN_FILES,     32).
 -define(DEF_CACHE_SIZE,   67108864). %% 64MB
@@ -169,12 +169,12 @@ delete(Handler, Key) ->
 
 %% @doc Retrieve objects from eleveldb by a keyword.
 %%
--spec(prefix_search(pid(), binary(), function()) ->
+-spec(prefix_search(pid(), binary(), function(), integer()) ->
              {ok, list()} | not_found | {error, any()}).
-prefix_search(Handler, Key, Fun) ->
+prefix_search(Handler, Key, Fun, MaxKeys) ->
     case catch eleveldb:iterator(Handler, []) of
         {ok, Itr} ->
-            case fold_loop(eleveldb:iterator_move(Itr, Key), Itr, Fun, [], Key) of
+            case fold_loop(eleveldb:iterator_move(Itr, Key), Itr, Fun, [], Key, MaxKeys) of
                 [] ->
                     not_found;
                 Acc ->
@@ -224,25 +224,27 @@ first(Handler) ->
 %%--------------------------------------------------------------------
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
-fold_loop({error, invalid_iterator}, _Itr, _Fun, Acc0, _Prefix) ->
+fold_loop({error, invalid_iterator}, _Itr, _Fun, Acc0, _Prefix, _MaxKeys) ->
     Acc0;
-fold_loop({ok, K}, Itr, Fun, Acc0, Prefix) ->
+fold_loop(_, _Itr, _Fun, Acc0, _Prefix, 0) ->
+    Acc0;
+fold_loop({ok, K}, Itr, Fun, Acc0, Prefix, MaxKeys) ->
     Size = size(Prefix),
     DstPrefix = binary:part(K, 0, Size),
     case DstPrefix of
         Prefix  ->
             Acc1 = Fun(K, [], Acc0),
-            fold_loop(eleveldb:iterator_move(Itr, prefetch), Itr, Fun, Acc1, Prefix);
+            fold_loop(eleveldb:iterator_move(Itr, prefetch), Itr, Fun, Acc1, Prefix, MaxKeys - 1);
         _ ->
             Acc0
     end;
-fold_loop({ok, K, V}, Itr, Fun, Acc0, Prefix) ->
+fold_loop({ok, K, V}, Itr, Fun, Acc0, Prefix, MaxKeys) ->
     Size = size(Prefix),
     DstPrefix = binary:part(K, 0, Size),
     case DstPrefix of
         Prefix ->
             Acc1 = Fun(K, V, Acc0),
-            fold_loop(eleveldb:iterator_move(Itr, prefetch), Itr, Fun, Acc1, Prefix);
+            fold_loop(eleveldb:iterator_move(Itr, prefetch), Itr, Fun, Acc1, Prefix, MaxKeys - 1);
         _ ->
             Acc0
     end.
