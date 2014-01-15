@@ -128,7 +128,7 @@ prefix_search(Table, _Key, Fun, MaxKeys) ->
     fold1(catch ets:foldl(Fun, [], Table), MaxKeys).
 
 fold1([], _)                      -> not_found;
-fold1(List, MaxKeys) when is_list(List) -> 
+fold1(List, MaxKeys) when is_list(List) ->
     {ok, lists:sublist(lists:reverse(List), MaxKeys)};
 fold1({'EXIT', Cause}, _)         -> {error, Cause};
 fold1({error, Cause}, _)          -> {error, Cause};
@@ -160,4 +160,3 @@ first(Table) ->
 %%--------------------------------------------------------------------
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
-

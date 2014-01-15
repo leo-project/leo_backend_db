@@ -187,4 +187,3 @@ proper_test_() ->
     {timeout, 60000, ?_assertEqual([], proper:module(leo_backend_db_api_prop))}.
 
 -endif.
-

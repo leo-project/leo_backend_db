@@ -166,4 +166,3 @@ fold1(fold,  List, MaxKeys) when is_list(List) -> {ok, lists:sublist(lists:rever
 fold1(_, {'EXIT', Cause}, _)                   -> {error, Cause};
 fold1(_, {error, Cause}, _)                    -> {error, Cause};
 fold1(_, _, _)                                 -> {error, 'badarg'}.
-

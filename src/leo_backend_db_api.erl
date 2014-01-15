@@ -314,4 +314,3 @@ do_request(delete, [InstanceName, KeyBin]) ->
         running ->
             {error, doing_compaction}
     end.
-
