@@ -38,7 +38,7 @@
 -export([put/3,
          get/2,
          delete/2,
-         fetch/3,
+         fetch/4,
          first/1,
          status/1
         ]).
@@ -108,10 +108,10 @@ delete(Id, KeyBin) ->
 
 %% @doc Fetch records from backend-db.
 %%
--spec(fetch(Id::atom(), KeyBin::binary(), Fun::function()) ->
+-spec(fetch(Id::atom(), KeyBin::binary(), Fun::function(), MaxKeys::integer()) ->
              {ok, list()} | not_found | {error, any()}).
-fetch(Id, KeyBin, Fun) ->
-    gen_server:call(Id, {fetch, KeyBin, Fun}, ?DEF_TIMEOUT).
+fetch(Id, KeyBin, Fun, MaxKeys) ->
+    gen_server:call(Id, {fetch, KeyBin, Fun, MaxKeys}, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve a first record from backend-db.
@@ -226,11 +226,10 @@ handle_call({delete, KeyBin}, _From, #state{db      = DBModule,
     {reply, Reply, State};
 
 
-handle_call({fetch, KeyBin, Fun}, _From, #state{db      = DBModule,
-                                                handler = Handler} = State) ->
-    Reply = erlang:apply(DBModule, prefix_search, [Handler, KeyBin, Fun]),
+handle_call({fetch, KeyBin, Fun, MaxKeys}, _From, #state{db      = DBModule,
+                                                         handler = Handler} = State) ->
+    Reply = erlang:apply(DBModule, prefix_search, [Handler, KeyBin, Fun, MaxKeys]),
     {reply, Reply, State};
-
 
 handle_call({first}, _From, #state{db      = DBModule,
                                    handler = Handler} = State) ->

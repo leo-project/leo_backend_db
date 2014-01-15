@@ -31,7 +31,7 @@
 -include("leo_backend_db.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([new/4, put/3, get/2, delete/2, fetch/3, first/1,
+-export([new/4, put/3, get/2, delete/2, fetch/3, fetch/4, first/1,
          status/1,
          compact_start/1, compact_put/3, compact_end/2,
          compact_suspend/1, compact_resume/1,
@@ -105,17 +105,20 @@ delete(InstanceName, KeyBin) ->
 -spec(fetch(atom(), binary(), function()) ->
              {ok, list()} | not_found | {error, any()}).
 fetch(InstanceName, KeyBin, Fun) ->
+    fetch(InstanceName, KeyBin, Fun, 1000).
+
+fetch(InstanceName, KeyBin, Fun, MaxKeys) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
             not_found;
         [{InstanceName, List}] ->
             Res = lists:foldl(fun(Id, Acc) ->
-                                      case ?SERVER_MODULE:fetch(Id, KeyBin, Fun) of
+                                      case ?SERVER_MODULE:fetch(Id, KeyBin, Fun, MaxKeys) of
                                           {ok, Ret} -> [Acc|Ret];
                                           _Other    -> Acc
                                       end
                               end, [], List),
-            fetch(lists:reverse(lists:flatten(Res)))
+            fetch(lists:sublist(lists:reverse(lists:flatten(Res)), MaxKeys))
     end.
 fetch([])  -> not_found;
 fetch(Res) -> {ok, Res}.
@@ -311,4 +314,3 @@ do_request(delete, [InstanceName, KeyBin]) ->
         running ->
             {error, doing_compaction}
     end.
-

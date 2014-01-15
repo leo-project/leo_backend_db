@@ -29,7 +29,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([open/1, open/2, close/1, status/1]).
--export([get/2, put/3, delete/2, prefix_search/3, first/1]).
+-export([get/2, put/3, delete/2, prefix_search/4, first/1]).
 
 %% @doc open bitcask.
 %%
@@ -133,10 +133,10 @@ delete(Handler, Key) ->
 
 %% @doc Retrieve objects from bitcask by a keyword.
 %%
--spec(prefix_search(pid(), binary(), function()) ->
+-spec(prefix_search(pid(), binary(), function(), integer()) ->
              {ok, list()} | not_found | {error, any()}).
-prefix_search(Handler, _Key, Fun) ->
-    fold(fold, Handler, Fun).
+prefix_search(Handler, _Key, Fun, MaxKeys) ->
+    fold(fold, Handler, Fun, MaxKeys).
 
 
 %% @doc Retrieve first record from bitcask
@@ -149,21 +149,20 @@ first(Handler) ->
                                      [] -> [{K, V} | Acc0];
                                      _  -> Acc0
                                  end
-                         end).
+                         end, 1).
 
 
 %%--------------------------------------------------------------------
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
--spec(fold(first|fold, pid(), function()) ->
+-spec(fold(first|fold, pid(), function(), integer()) ->
              {ok, any()} | not_found | {error, any()}).
-fold(Mode, Handler, Fun) ->
-    fold1(Mode, catch bitcask:fold(Handler, Fun, [])).
+fold(Mode, Handler, Fun, MaxKeys) ->
+    fold1(Mode, catch bitcask:fold(Handler, Fun, []), MaxKeys).
 
-fold1(_, [])                                -> not_found;
-fold1(first, [{K, V}|_])                    -> {ok, K, V};
-fold1(fold,  List) when is_list(List)       -> {ok, lists:reverse(List)};
-fold1(_, {'EXIT', Cause})                   -> {error, Cause};
-fold1(_, {error, Cause})                    -> {error, Cause};
-fold1(_, _)                                 -> {error, 'badarg'}.
-
+fold1(_, [], _)                                -> not_found;
+fold1(first, [{K, V}|_], _)                    -> {ok, K, V};
+fold1(fold,  List, MaxKeys) when is_list(List) -> {ok, lists:sublist(lists:reverse(List), MaxKeys)};
+fold1(_, {'EXIT', Cause}, _)                   -> {error, Cause};
+fold1(_, {error, Cause}, _)                    -> {error, Cause};
+fold1(_, _, _)                                 -> {error, 'badarg'}.
