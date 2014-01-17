@@ -105,7 +105,7 @@ delete(InstanceName, KeyBin) ->
 -spec(fetch(atom(), binary(), function()) ->
              {ok, list()} | not_found | {error, any()}).
 fetch(InstanceName, KeyBin, Fun) ->
-    fetch(InstanceName, KeyBin, Fun, 1000).
+    fetch(InstanceName, KeyBin, Fun, round(math:pow(2, 32))).
 
 fetch(InstanceName, KeyBin, Fun, MaxKeys) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of

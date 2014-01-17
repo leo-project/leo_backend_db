@@ -224,7 +224,7 @@ first(Handler) ->
 %%--------------------------------------------------------------------
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
-fold_loop({error, invalid_iterator}, _Itr, _Fun, Acc0, _Prefix, _MaxKeys) ->
+fold_loop({error, _}, _Itr, _Fun, Acc0, _Prefix, _MaxKeys) ->
     Acc0;
 fold_loop(_, _Itr, _Fun, Acc0, _Prefix, 0) ->
     Acc0;
@@ -234,7 +234,7 @@ fold_loop({ok, K}, Itr, Fun, Acc0, Prefix, MaxKeys) ->
     case DstPrefix of
         Prefix  ->
             Acc1 = Fun(K, [], Acc0),
-            fold_loop(eleveldb:iterator_move(Itr, prefetch), Itr, Fun, Acc1, Prefix, MaxKeys - 1);
+            fold_loop(eleveldb:iterator_move(Itr, next), Itr, Fun, Acc1, Prefix, MaxKeys - 1);
         _ ->
             Acc0
     end;
@@ -244,7 +244,7 @@ fold_loop({ok, K, V}, Itr, Fun, Acc0, Prefix, MaxKeys) ->
     case DstPrefix of
         Prefix ->
             Acc1 = Fun(K, V, Acc0),
-            fold_loop(eleveldb:iterator_move(Itr, prefetch), Itr, Fun, Acc1, Prefix, MaxKeys - 1);
+            fold_loop(eleveldb:iterator_move(Itr, next), Itr, Fun, Acc1, Prefix, MaxKeys - 1);
         _ ->
             Acc0
     end.
