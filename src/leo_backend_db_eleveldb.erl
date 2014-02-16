@@ -229,18 +229,18 @@ fold_loop({error, _}, _Itr, _Fun, Acc0, _Prefix, _MaxKeys) ->
 fold_loop(_, _Itr, _Fun, Acc0, _Prefix, 0) ->
     Acc0;
 fold_loop({ok, K}, Itr, Fun, Acc0, Prefix, MaxKeys) ->
-    Size = size(Prefix),
-    DstPrefix = binary:part(K, 0, Size),
-    case DstPrefix of
-        Prefix  ->
-            Acc1 = Fun(K, [], Acc0),
-            fold_loop(eleveldb:iterator_move(Itr, next), Itr, Fun, Acc1, Prefix, MaxKeys - 1);
-        _ ->
-            Acc0
-    end;
+    KeySize = size(K),
+    PrefixSize = size(Prefix),
+    fold_loop(K, [], Itr, Fun, Acc0, Prefix, MaxKeys, KeySize, PrefixSize);
 fold_loop({ok, K, V}, Itr, Fun, Acc0, Prefix, MaxKeys) ->
-    Size = size(Prefix),
-    DstPrefix = binary:part(K, 0, Size),
+    KeySize = size(K),
+    PrefixSize = size(Prefix),
+    fold_loop(K, V, Itr, Fun, Acc0, Prefix, MaxKeys, KeySize, PrefixSize).
+
+fold_loop(_K, _V, Itr, Fun, Acc0, Prefix, MaxKeys, KeySize, PrefixSize) when KeySize =< PrefixSize ->
+    fold_loop(eleveldb:iterator_move(Itr, next), Itr, Fun, Acc0, Prefix, MaxKeys);
+fold_loop(K, V, Itr, Fun, Acc0, Prefix, MaxKeys, _KeySize, PrefixSize) ->
+    DstPrefix = binary:part(K, 0, PrefixSize),
     case DstPrefix of
         Prefix ->
             Acc1 = Fun(K, V, Acc0),
