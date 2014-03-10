@@ -11,7 +11,6 @@ Overview
   * [eleveldb](https://github.com/basho/eleveldb)
   * [Erlang ETS](http://www.erlang.org/doc/man/ets.html)
 
-* "leo_backend_db" uses the "rebar" build system. Makefile so that simply running "make" at the top level should work.
-  * [rebar](https://github.com/basho/rebar)
+* "leo_backend_db" uses [rebar](https://github.com/basho/rebar) build system. Makefile so that simply running "make" at the top level should work.
 * "leo_backend_db" requires Erlang R14B04 or later.
 
