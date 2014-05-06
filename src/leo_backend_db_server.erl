@@ -40,7 +40,10 @@
          delete/2,
          fetch/4,
          first/1,
-         status/1
+         status/1,
+         close/1,
+         compact_start/1, compact_put/3, compact_end/2,
+         get_db_raw_filepath/1
         ]).
 
 %% gen_server callbacks
@@ -49,9 +52,7 @@
          handle_cast/2,
          handle_info/2,
          terminate/2,
-         code_change/3,
-         compact_start/1, compact_put/3, compact_end/2,
-         get_db_raw_filepath/1
+         code_change/3
         ]).
 
 -record(state, {id           :: atom(),
@@ -73,10 +74,7 @@ start_link(Id, DBModule, Path) ->
     gen_server:start_link({local, Id}, ?MODULE, [Id, DBModule, Path], []).
 
 stop(Id) ->
-    error_logger:info_msg("~p,~p,~p,~p~n",
-                          [{module, ?MODULE_STRING}, {function, "stop/1"},
-                           {line, ?LINE}, {body, Id}]),
-    gen_server:call(Id, stop, ?DEF_TIMEOUT).
+    gen_server:call(Id, stop).
 
 
 %%--------------------------------------------------------------------
@@ -119,7 +117,7 @@ fetch(Id, KeyBin, Fun, MaxKeys) ->
 -spec(first(atom()) ->
              {ok, list()} | {error, any()}).
 first(Id) ->
-    gen_server:call(Id, {first}, ?DEF_TIMEOUT).
+    gen_server:call(Id, first, ?DEF_TIMEOUT).
 
 
 %% Retrieve status from backend-db.
@@ -127,7 +125,15 @@ first(Id) ->
 -spec(status(atom()) ->
              list()).
 status(Id) ->
-    gen_server:call(Id, {status}, ?DEF_TIMEOUT).
+    gen_server:call(Id, status, ?DEF_TIMEOUT).
+
+
+%% Close a DB
+%%
+-spec(close(atom()) ->
+             ok).
+close(Id) ->
+    gen_server:call(Id, close, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to start a compaction.
@@ -135,7 +141,7 @@ status(Id) ->
 -spec(compact_start(atom()) ->
              ok | {error, any()}).
 compact_start(Id) ->
-    gen_server:call(Id, {compact_start}, ?DEF_TIMEOUT).
+    gen_server:call(Id, compact_start, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to end a compaction.
@@ -159,7 +165,7 @@ compact_put(Id, KeyBin, ValueBin) ->
 -spec(get_db_raw_filepath(atom()) ->
              ok | {error, any()}).
 get_db_raw_filepath(Id) ->
-    gen_server:call(Id, {get_db_raw_filepath}, ?DEF_TIMEOUT).
+    gen_server:call(Id, get_db_raw_filepath, ?DEF_TIMEOUT).
 
 
 %%--------------------------------------------------------------------
@@ -201,8 +207,15 @@ init([Id, DBModule, Path0]) ->
             {stop, Cause}
     end.
 
-handle_call(stop, _From, State) ->
-    {stop, shutdown, ok, State};
+handle_call(stop, _From, #state{id = Id,
+                                db = DBModule,
+                                handler = Handler} = State) ->
+    error_logger:info_msg("~p,~p,~p,~p~n",
+                          [{module, ?MODULE_STRING},
+                           {function, "handle_call/3 - stop"},
+                           {line, ?LINE}, {body, Id}]),
+    catch erlang:apply(DBModule, close, [Handler]),
+    {stop, normal, stopped, State};
 
 
 %%--------------------------------------------------------------------
@@ -231,20 +244,26 @@ handle_call({fetch, KeyBin, Fun, MaxKeys}, _From, #state{db      = DBModule,
     Reply = erlang:apply(DBModule, prefix_search, [Handler, KeyBin, Fun, MaxKeys]),
     {reply, Reply, State};
 
-handle_call({first}, _From, #state{db      = DBModule,
-                                   handler = Handler} = State) ->
+handle_call(first, _From, #state{db      = DBModule,
+                                 handler = Handler} = State) ->
     Reply = erlang:apply(DBModule, first, [Handler]),
     {reply, Reply, State};
 
 
-handle_call({status}, _From, #state{db      = DBModule,
-                                    handler = Handler} = State) ->
+handle_call(status, _From, #state{db      = DBModule,
+                                  handler = Handler} = State) ->
     Reply = erlang:apply(DBModule, status, [Handler]),
     {reply, Reply, State};
 
 
-handle_call({compact_start}, _From, #state{db   = DBModule,
-                                           path = Path} = State) ->
+handle_call(close, _From, #state{db      = DBModule,
+                                 handler = Handler} = State) ->
+    catch erlang:apply(DBModule, close, [Handler]),
+    {reply, ok, State};
+
+
+handle_call(compact_start, _From, #state{db   = DBModule,
+                                         path = Path} = State) ->
     NewPath = gen_file_raw_path(Path),
     case filelib:ensure_dir(NewPath) of
         ok ->
@@ -300,8 +319,9 @@ handle_call({compact_end, Commit}, _From, #state{db           = DBModule,
             {reply, ok, State}
     end;
 
-handle_call({get_db_raw_filepath}, _From, #state{path = Path} = State) ->
+handle_call(get_db_raw_filepath, _From, #state{path = Path} = State) ->
     {reply, {ok, Path}, State}.
+
 
 %% Function: handle_cast(Msg, State) -> {noreply, State}          |
 %%                                      {noreply, State, Timeout} |
@@ -326,7 +346,8 @@ terminate(_Reason, #state{id      = Id,
                           db      = DBModule,
                           handler = Handler}) ->
     error_logger:info_msg("~p,~p,~p,~p~n",
-                          [{module, ?MODULE_STRING}, {function, "terminate/2"},
+                          [{module, ?MODULE_STRING},
+                           {function, "terminate/2"},
                            {line, ?LINE}, {body, Id}]),
     catch erlang:apply(DBModule, close, [Handler]),
     ok.

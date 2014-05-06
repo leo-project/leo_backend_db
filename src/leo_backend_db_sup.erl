@@ -34,7 +34,7 @@
 
 %% External API
 -export([start_link/0,
-         stop/0, stop/1,
+         stop/0,
          start_child/4, start_child/5]).
 
 %% Callbacks
@@ -53,24 +53,15 @@ start_link() ->
 %% @spec () -> ok |
 %%             not_started
 %% @doc stop process.
-%% @end
 stop() ->
     case whereis(?MODULE) of
-        Pid when is_pid(Pid) == true ->
-            stop(Pid);
+        Pid when is_pid(Pid) ->
+            List = supervisor:which_children(Pid),
+            ok = close_db(List),
+            ok;
         _ ->
             not_started
     end.
-
-stop(Pid) ->
-    List = supervisor:which_children(Pid),
-    Len  = length(List),
-
-    ok = terminate_children(List),
-    timer:sleep(Len * 100),
-    exit(Pid, shutdown),
-    ok.
-
 
 %% ---------------------------------------------------------------------
 %% Callbacks
@@ -162,13 +153,17 @@ start_child(SupRef0, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
 %% ---------------------------------------------------------------------
 %% Inner Function(s)
 %% ---------------------------------------------------------------------
-terminate_children([]) ->
+%% @doc Close databases
+%% @private
+-spec(close_db(list(tuple())) ->
+             ok).
+close_db([]) ->
     ok;
-terminate_children([{Id,_Pid, worker, [Mod|_]}|T]) ->
-    Mod:stop(Id),
-    terminate_children(T);
-terminate_children([_|T]) ->
-    terminate_children(T).
+close_db([{Id,_Pid, worker, ['leo_backend_db_server' = Mod|_]}|T]) ->
+    _ = Mod:close(Id),
+    close_db(T);
+close_db([_|T]) ->
+    close_db(T).
 
 
 %% @doc Retrieve a backend module name.

@@ -76,7 +76,6 @@ setup() ->
     ok.
 
 teardown(_) ->
-    catch leo_backend_db_sup:stop(),
     catch application:stop(leo_backend_db),
     timer:sleep(200),
     os:cmd("rm -rf ./work"),
