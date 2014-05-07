@@ -28,8 +28,11 @@
 
 -behaviour(application).
 
+-include_lib("eunit/include/eunit.hrl").
+
 %% Application and Supervisor callbacks
--export([start/2, stop/1, profile_output/0]).
+-export([start/2, prep_stop/1, stop/1,
+         profile_output/0]).
 
 %%----------------------------------------------------------------------
 %% Application behaviour callbacks
@@ -38,8 +41,11 @@ start(_Type, _Args) ->
     consider_profiling(),
     leo_backend_db_sup:start_link().
 
+prep_stop(_State) ->
+    ok = leo_backend_db_sup:stop(),
+    ok.
+
 stop(_State) ->
-    leo_backend_db_sup:stop(),
     ok.
 
 
