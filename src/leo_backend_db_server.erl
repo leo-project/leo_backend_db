@@ -91,7 +91,7 @@ put(Id, KeyBin, ValueBin) ->
 %% @doc Retrieve an object from backend-db.
 %%
 -spec(get(Id::atom(), KeyBin::binary()) ->
-             {ok, any()} | {error, any()}).
+             {ok, binary()} | not_found | {error, any()}).
 get(Id, KeyBin) ->
     gen_server:call(Id, {get, KeyBin}, ?DEF_TIMEOUT).
 
