@@ -100,7 +100,7 @@ gen_prefix_fun(TargetPrefix) ->
 gen_prefix() ->
     NumOfPrefix = basho_bench_config:get(num_of_prefix, 1000),
     IntPrefix = random:uniform(NumOfPrefix),
-    integer_to_binary(IntPrefix).
+    list_to_binary(integer_to_list(IntPrefix)).
 
 %% print status when finished benchmark
 terminate(Reason, State) ->

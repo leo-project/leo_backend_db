@@ -115,7 +115,7 @@ fetch(Id, KeyBin, Fun, MaxKeys) ->
 %% @doc Retrieve a first record from backend-db.
 %%
 -spec(first(atom()) ->
-             {ok, list()} | {error, any()}).
+             {ok, any(), any()} | {error, any()}).
 first(Id) ->
     gen_server:call(Id, first, ?DEF_TIMEOUT).
 

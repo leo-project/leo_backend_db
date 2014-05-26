@@ -69,10 +69,6 @@ backend_db_test_() ->
                           ]]}.
 
 setup() ->
-    meck:new(leo_logger),
-    meck:expect(leo_logger, append, fun(_,_,_) ->
-                                            ok
-                                    end),
     ok.
 
 teardown(_) ->
