@@ -87,7 +87,7 @@ put(InstanceName, KeyBin, ValueBin) ->
 %% @doc Retrieve an object from backend-db.
 %%
 -spec(get(atom(), binary()) ->
-             {ok, list()} | not_found | {error, any()}).
+             {ok, binary()} | not_found | {error, any()}).
 get(InstanceName, KeyBin) ->
     do_request(get, [InstanceName, KeyBin]).
 
