@@ -292,7 +292,7 @@ get_object_storage_pid(InstanceName, Arg) ->
 %% @doc request an operation.
 %%
 -spec(do_request(type_of_methods(), list()) ->
-             ok | {ok, binary()} | {error, any()}).
+             ok | {ok, binary()} | not_found | {error, any()}).
 do_request(get, [InstanceName, KeyBin]) ->
     Id = get_object_storage_pid(InstanceName, KeyBin),
     ?SERVER_MODULE:get(Id, KeyBin);
