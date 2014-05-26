@@ -33,13 +33,13 @@
 
 %% @doc
 %%
--spec(open(string()) ->
-             {ok, pid()} | {error, any()}).
+-spec(open(atom() | string()) ->
+             ok).
 open(Table) ->
     open(Table, [named_table, public, {read_concurrency, true}]).
 
--spec(open(string() | atom(), list()) ->
-             {ok, pid()} | {error, any()}).
+-spec(open(atom() | string(), list()) ->
+             ok).
 open(Table, Option) when is_atom(Table) ->
     Table = ets:new(Table, Option),
     ok;
@@ -49,20 +49,21 @@ open(Table, Option) ->
 
 %% @doc close.
 %%
--spec(close(pid()) -> ok).
+-spec(close(atom()) -> ok).
 close(_Table) ->
     ok.
 
 
 %% @doc Get the status information for this ets.
--spec status(reference()) -> [{atom(), term()}].
+-spec(status(atom()) ->
+             [any()] | undefined).
 status(Table) ->
     ets:info(Table).
 
 
 %% @doc Retrieve an object from ets.
 %%
--spec(get(pid(), binary()) ->
+-spec(get(atom(), binary()) ->
              not_found | {ok, binary()} | {error, any()}).
 get(Table, Key) ->
     case catch ets:lookup(Table, Key) of
@@ -101,8 +102,8 @@ put(Table, Key, Value) ->
 
 %% @doc Delete an object from ets.
 %%
--spec(delete(pid(), binary()) ->
-             ok | {error, any()}).
+-spec(delete(atom(), binary()) ->
+             ok | not_found | {error, any()}).
 delete(Table, Key) ->
     case get(Table, Key) of
         {ok, Value} ->

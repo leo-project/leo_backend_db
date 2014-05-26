@@ -59,7 +59,7 @@ open(Path, Config) ->
 
     case filelib:ensure_dir(Path) of
         ok ->
-            open1(Path, Options);
+            open_1(Path, Options);
         {error, Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
                                    [{module, ?MODULE_STRING}, {function, "open/2"},
@@ -68,9 +68,9 @@ open(Path, Config) ->
     end.
 
 %% @private
--spec(open1(string(), list()) ->
+-spec(open_1(string(), list()) ->
              {error, any()} | {ok, pid()}).
-open1(Path, Options) ->
+open_1(Path, Options) ->
     case catch eleveldb:open(Path, Options) of
         {ok, Handler} ->
             {ok, Handler};
@@ -89,14 +89,14 @@ open1(Path, Options) ->
 
 %% @doc close bitcask.
 %%
--spec(close(pid()) -> ok).
+-spec(close(binary()) -> ok).
 close(Handler) ->
     catch eleveldb:close(Handler),
     ok.
 
 
 %% @doc Get the status information for this eleveldb backend
--spec status(reference()) -> [{atom(), term()}].
+-spec status(binary()) -> [{atom(), term()}].
 status(Handler) ->
     {ok, Stats} = eleveldb:status(Handler, <<"leveldb.stats">>),
     [{stats, Stats}].
@@ -104,7 +104,7 @@ status(Handler) ->
 
 %% @doc Retrieve an object from the eleveldb.
 %%
--spec(get(pid(), string()) ->
+-spec(get(binary(), string()) ->
              {ok, binary()} | not_found | {error, any()}).
 get(Handler, Key) ->
     case catch eleveldb:get(Handler, Key, []) of
@@ -127,7 +127,7 @@ get(Handler, Key) ->
 
 %% @doc Insert an object into the eleveldb.
 %%
--spec(put(pid(), binary(), binary()) ->
+-spec(put(binary(), binary(), binary()) ->
              ok | {error, any()}).
 put(Handler, Key, Value) ->
     case catch eleveldb:put(Handler, Key, Value, []) of
@@ -148,7 +148,7 @@ put(Handler, Key, Value) ->
 
 %% @doc Delete an object from the eleveldb.
 %%
--spec(delete(pid(), binary()) ->
+-spec(delete(binary(), binary()) ->
              ok | {error, any()}).
 delete(Handler, Key) ->
     case catch eleveldb:delete(Handler, Key, []) of
@@ -169,25 +169,23 @@ delete(Handler, Key) ->
 
 %% @doc Retrieve objects from eleveldb by a keyword.
 %%
--spec(prefix_search(pid(), binary(), function(), integer()) ->
-             {ok, list()} | not_found | {error, any()}).
+-spec(prefix_search(binary(), binary(), fun(), integer()) ->
+             {ok, [_]} | not_found | {error, any()}).
 prefix_search(Handler, Key, Fun, MaxKeys) ->
-    case catch eleveldb:iterator(Handler, []) of
-        {ok, Itr} ->
-            case fold_loop(eleveldb:iterator_move(Itr, Key), Itr, Fun, [], Key, MaxKeys) of
-                [] ->
-                    not_found;
-                Acc ->
-                    {ok, lists:reverse(Acc)}
-            end;
-        {'EXIT', Cause} ->
+    try
+        {ok, Itr} = eleveldb:iterator(Handler, []),
+        Ret = eleveldb:iterator_move(Itr, Key),
+        case fold_loop(Ret, Itr, Fun, [], Key, MaxKeys) of
+            [] ->
+                not_found;
+            Acc ->
+                {ok, lists:reverse(Acc)}
+        end
+    catch
+        _:Cause ->
             error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "prefix_search/3"},
-                                    {line, ?LINE}, {body, Cause}]),
-            {error, Cause};
-        {error, Cause} ->
-            error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "prefix_search/3"},
+                                   [{module, ?MODULE_STRING},
+                                    {function, "prefix_search/3"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
@@ -195,7 +193,7 @@ prefix_search(Handler, Key, Fun, MaxKeys) ->
 
 %% @doc Retrieve 'first' record from eleveldb.
 %%
--spec(first(pid()) ->
+-spec(first(binary()) ->
              {ok, any()} | not_found | {error, any()}).
 first(Handler) ->
     case catch eleveldb:iterator(Handler, []) of
@@ -224,27 +222,43 @@ first(Handler) ->
 %%--------------------------------------------------------------------
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
-fold_loop({error, _}, _Itr, _Fun, Acc0, _Prefix, _MaxKeys) ->
-    Acc0;
-fold_loop(_, _Itr, _Fun, Acc0, _Prefix, 0) ->
-    Acc0;
-fold_loop({ok, K}, Itr, Fun, Acc0, Prefix, MaxKeys) ->
-    KeySize = size(K),
-    PrefixSize = size(Prefix),
-    fold_loop(K, [], Itr, Fun, Acc0, Prefix, MaxKeys, KeySize, PrefixSize);
-fold_loop({ok, K, V}, Itr, Fun, Acc0, Prefix, MaxKeys) ->
-    KeySize = size(K),
-    PrefixSize = size(Prefix),
-    fold_loop(K, V, Itr, Fun, Acc0, Prefix, MaxKeys, KeySize, PrefixSize).
+%% @doc Retrieve object of values
+%% @private
+-spec(fold_loop({ok, binary(), binary()} |
+                {ok, binary()} |
+                {error, invalid_iterator|iterator_closed},
+                binary(), function(), [], binary(), integer()) ->
+             [tuple()]).
+fold_loop({ok, K}, Itr, Fun, Acc, Prefix, MaxKeys) ->
+    KeySize    = byte_size(K),
+    PrefixSize = byte_size(Prefix),
+    fold_loop_1(K, [], Itr, Fun, Acc,
+                Prefix, MaxKeys, KeySize, PrefixSize);
 
-fold_loop(_K, _V, Itr, Fun, Acc0, Prefix, MaxKeys, KeySize, PrefixSize) when KeySize =< PrefixSize ->
-    fold_loop(eleveldb:iterator_move(Itr, next), Itr, Fun, Acc0, Prefix, MaxKeys);
-fold_loop(K, V, Itr, Fun, Acc0, Prefix, MaxKeys, _KeySize, PrefixSize) ->
+fold_loop({ok, K, V}, Itr, Fun, Acc, Prefix, MaxKeys) ->
+    KeySize    = byte_size(K),
+    PrefixSize = byte_size(Prefix),
+    fold_loop_1(K, V, Itr, Fun, Acc,
+                Prefix, MaxKeys, KeySize, PrefixSize);
+fold_loop({error,_},_Itr,_Fun, Acc,_Prefix,_MaxKeys) ->
+    Acc.
+
+
+%% @private
+-spec(fold_loop_1(binary(),_,_,_,_,_,_,_,integer()) ->
+             any()).
+fold_loop_1(_K,_V, Itr, Fun, Acc, Prefix, MaxKeys, KeySize, PrefixSize)
+  when KeySize =< PrefixSize ->
+    fold_loop(eleveldb:iterator_move(Itr, next),
+              Itr, Fun, Acc, Prefix, MaxKeys);
+
+fold_loop_1(K, V, Itr, Fun, Acc, Prefix, MaxKeys,_KeySize, PrefixSize) ->
     DstPrefix = binary:part(K, 0, PrefixSize),
     case DstPrefix of
         Prefix ->
-            Acc1 = Fun(K, V, Acc0),
-            fold_loop(eleveldb:iterator_move(Itr, next), Itr, Fun, Acc1, Prefix, MaxKeys - 1);
+            Acc_1 = Fun(K, V, Acc),
+            Ret = eleveldb:iterator_move(Itr, next),
+            fold_loop(Ret, Itr, Fun, Acc_1, Prefix, MaxKeys - 1);
         _ ->
-            Acc0
+            Acc
     end.

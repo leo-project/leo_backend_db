@@ -64,7 +64,7 @@ open(Path, Options) ->
 
 %% @doc close bitcask.
 %%
--spec(close(pid()) -> ok).
+-spec(close(reference()) -> ok).
 close(Handler) ->
     bitcask:close(Handler).
 
@@ -155,14 +155,22 @@ first(Handler) ->
 %%--------------------------------------------------------------------
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
+%% @private
 -spec(fold(first|fold, pid(), function(), integer()) ->
              {ok, any()} | not_found | {error, any()}).
 fold(Mode, Handler, Fun, MaxKeys) ->
-    fold1(Mode, catch bitcask:fold(Handler, Fun, []), MaxKeys).
+    fold_1(Mode, catch bitcask:fold(Handler, Fun, []), MaxKeys).
 
-fold1(_, [], _)                                -> not_found;
-fold1(first, [{K, V}|_], _)                    -> {ok, K, V};
-fold1(fold,  List, MaxKeys) when is_list(List) -> {ok, lists:sublist(lists:reverse(List), MaxKeys)};
-fold1(_, {'EXIT', Cause}, _)                   -> {error, Cause};
-fold1(_, {error, Cause}, _)                    -> {error, Cause};
-fold1(_, _, _)                                 -> {error, 'badarg'}.
+%% @private
+fold_1(_, [],_) ->
+    not_found;
+fold_1(first, [{K, V}|_],_) ->
+    {ok, K, V};
+fold_1(fold,  List, MaxKeys) when is_list(List) ->
+    {ok, lists:sublist(lists:reverse(List), MaxKeys)};
+fold_1(_, {'EXIT', Cause},_) ->
+    {error, Cause};
+fold_1(_, {error, Cause},_) ->
+    {error, Cause};
+fold_1(_,_,_) ->
+    {error, 'badarg'}.

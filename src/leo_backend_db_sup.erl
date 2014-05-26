@@ -80,13 +80,13 @@ init([]) ->
 %%
 %%
 -spec(start_child(atom(), pos_integer(), atom(), string()) ->
-             ok | true).
+             ok | no_return()).
 start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     start_child(?MODULE, InstanceName, NumOfDBProcs, BackendDB, DBRootPath).
 
--spec(start_child(supervisro:sup_ref(), atom(), pos_integer(), atom(), string()) ->
+-spec(start_child(atom()|pid(), atom(), pos_integer(), atom(), string()) ->
              ok | true).
-start_child(SupRef0, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
+start_child(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     ok = leo_misc:init_env(),
     catch ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
 
@@ -108,7 +108,7 @@ start_child(SupRef0, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                   ChildSpec = {Id,
                                {leo_backend_db_server, start_link, Args},
                                permanent, 2000, worker, [leo_backend_db_server]},
-                  case supervisor:start_child(SupRef0, ChildSpec) of
+                  case supervisor:start_child(SupRef, ChildSpec) of
                       {ok, _Pid} when BackendDB == bitcask ->
                           ok = bitcask:merge(Path),
                           Id;
@@ -121,13 +121,16 @@ start_child(SupRef0, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
           end,
     Ret = lists:map(Fun, lists:seq(0, NumOfDBProcs-1)),
 
-    SupRef1 = case is_atom(SupRef0) of
-                  true  -> whereis(SupRef0);
-                  false -> SupRef0
+    SupRef_1 = case is_atom(SupRef) of
+                  true  ->
+                      whereis(SupRef);
+                  false ->
+                      SupRef
               end,
 
-    case supervisor:count_children(SupRef1) of
-        [{specs,_},{active,Active},{supervisors,_},{workers,Workers}] when Active == Workers ->
+    case supervisor:count_children(SupRef_1) of
+        [{specs,_},{active,Active},
+         {supervisors,_},{workers,Workers}] when Active == Workers ->
             case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
                 [] ->
                     true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret});
