@@ -1,4 +1,7 @@
 ## Dialyzer - ignore warnings
 ##
-leo_backend_db_eleveldb.erl:232: Function fold_loop/6 will never be called
-leo_backend_db_eleveldb.erl:250: Function fold_loop_1/9 will never be called
+##
+## leo_backend_db_eleveldb
+##
+Function fold_loop/6 will never be called
+Function fold_loop_1/9 will never be called
