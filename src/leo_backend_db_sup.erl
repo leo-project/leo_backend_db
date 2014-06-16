@@ -79,12 +79,12 @@ init([]) ->
 %%-----------------------------------------------------------------------
 %%
 %%
--spec(start_child(atom(), pos_integer(), atom(), string()) ->
+-spec(start_child(atom(), pos_integer(), backend_db(), string()) ->
              ok | no_return()).
 start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     start_child(?MODULE, InstanceName, NumOfDBProcs, BackendDB, DBRootPath).
 
--spec(start_child(atom()|pid(), atom(), pos_integer(), atom(), string()) ->
+-spec(start_child(atom()|pid(), atom(), pos_integer(), backend_db(), string()) ->
              ok | true).
 start_child(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     ok = leo_misc:init_env(),
