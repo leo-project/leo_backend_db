@@ -163,7 +163,7 @@ compact_put(Id, KeyBin, ValueBin) ->
 %% @doc get database file path for calculating disk size.
 %%
 -spec(get_db_raw_filepath(atom()) ->
-             ok | {error, any()}).
+             {ok, string()} | {error, any()}).
 get_db_raw_filepath(Id) ->
     gen_server:call(Id, get_db_raw_filepath, ?DEF_TIMEOUT).
 

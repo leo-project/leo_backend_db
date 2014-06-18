@@ -234,7 +234,7 @@ compact_put(InstanceName, KeyBin, ValueBin) ->
 
 %% @doc get database file path for calculating disk size. assume InstanceName has only one instance.
 -spec(get_db_raw_filepath(atom()) ->
-             ok | {error, any()}).
+             {ok, string()} | {error, any()}).
 get_db_raw_filepath(InstanceName) ->
     %% invoke server method
     Id = get_object_storage_pid(InstanceName, none),
