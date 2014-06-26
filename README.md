@@ -10,8 +10,8 @@ leo_backend_db
 
 ## Build Information
   
-* "leo_backend_db" uses [rebar](https://github.com/basho/rebar) build system. Makefile so that simply running "make" at the top level should work.
-* "leo_backend_db" requires Erlang R14B04 or later.
+* **leo_backend_db** uses [rebar](https://github.com/basho/rebar) build system. Makefile so that simply running "make" at the top level should work.
+* **leo_backend_db** requires Erlang R14B04 or later.
 
 ## Usage
 
@@ -33,6 +33,18 @@ ok
 4> leo_backend_db_api:stop(test_leveldb).
 ...
 ```
+
+## Usage in LeoFS
+
+**leo_backend_db** is used in [leo_object_storage](https://github.com/leo-project/leo_object_storage) and [leo_mq](https://github.com/leo-project/leo_mq).
+
+### [leo_object_storage](https://github.com/leo-project/leo_object_storage)
+
+**leo_backend_db** works to handle the backend database of LeoFS. It manages the stored objects in LeoFS.
+
+### [leo_mq](https://github.com/leo-project/leo_mq)
+
+**backend_db** is also used to manage message queue among the LeoFS storage nodes.
 
 ## Lincense
 
