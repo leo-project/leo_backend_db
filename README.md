@@ -30,7 +30,7 @@ ok
 ok
 3> leo_backend_db_api:get(test_leveldb, <<"key1">>).
 {ok,<<"val1">>}
-4> leo_backend_db_api:stop(Instance).
+4> leo_backend_db_api:stop(test_leveldb).
 ...
 ```
 
