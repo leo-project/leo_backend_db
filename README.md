@@ -11,7 +11,7 @@ leo_backend_db
 ## Build Information
   
 * **leo_backend_db** uses [rebar](https://github.com/basho/rebar) build system. Makefile so that simply running "make" at the top level should work.
-* **leo_backend_db** requires Erlang R14B04 or later.
+* **leo_backend_db** requires Erlang R15B03-1 or later.
 
 ## Usage
 
