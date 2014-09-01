@@ -155,7 +155,6 @@ compact_(_) ->
     Val = <<"val">>,
 
     ok = leo_backend_db_api:new(Id, 1, ?BACKEND_DB_BITCASK, ?PATH2),
-
     ok = leo_backend_db_api:put(Id, Key, Val),
     not_found = leo_backend_db_api:get(Id, <<"hoge">>),
     {ok, Val} = leo_backend_db_api:get(Id, Key),
@@ -164,17 +163,16 @@ compact_(_) ->
 
     {ok, _Path} = leo_backend_db_api:get_db_raw_filepath(Id),
 
-
-    %% need to do for generating different tmp directory name
+    %% Execute data-compaction depends on leo-object-storage
     timer:sleep(1000),
-    ok = leo_backend_db_api:compact_start(Id),
+    ok = leo_backend_db_api:run_compaction(Id),
     not_found = leo_backend_db_api:get(Id, Key),
-    {error,doing_compaction} = leo_backend_db_api:put(Id, Key, Val),
-    {error,doing_compaction} = leo_backend_db_api:delete(Id, Key),
+    ok = leo_backend_db_api:put(Id, Key, Val),
+    ok = leo_backend_db_api:delete(Id, Key),
 
-    ok = leo_backend_db_api:compact_put(Id, Key, Val),
-    ok = leo_backend_db_api:compact_end(Id, true),
-    {ok,Val} = leo_backend_db_api:get(Id, Key),
+    ok = leo_backend_db_api:put_value_to_new_db(Id, Key, Val),
+    ok = leo_backend_db_api:finish_compaction(Id, true),
+    {ok, Val} = leo_backend_db_api:get(Id, Key),
     ok.
 
 
