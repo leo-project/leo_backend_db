@@ -42,7 +42,8 @@
          first/1,
          status/1,
          close/1,
-         compact_start/1, compact_put/3, compact_end/2,
+         run_compaction/1, finish_compaction/2,
+         put_value_to_new_db/3,
          get_db_raw_filepath/1
         ]).
 
@@ -55,13 +56,13 @@
          code_change/3
         ]).
 
--record(state, {id           :: atom(),
-                db           :: atom(),
-                path         :: string(),
-                raw_path     :: string(),
-                tmp_raw_path :: string(),
-                tmp_handler  :: pid(),
-                handler      :: pid()}).
+-record(state, {id :: atom(),
+                db :: atom(),
+                path = []         :: string(),
+                raw_path = []     :: string(),
+                tmp_raw_path = [] :: string(),
+                tmp_handler :: pid(),
+                handler     :: pid()}).
 
 -define(DEF_TIMEOUT, 30000).
 
@@ -138,26 +139,26 @@ close(Id) ->
 
 %% @doc Direct to start a compaction.
 %%
--spec(compact_start(atom()) ->
+-spec(run_compaction(atom()) ->
              ok | {error, any()}).
-compact_start(Id) ->
-    gen_server:call(Id, compact_start, ?DEF_TIMEOUT).
+run_compaction(Id) ->
+    gen_server:call(Id, run_compaction, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to end a compaction.
 %%
--spec(compact_end(atom(), boolean()) ->
+-spec(finish_compaction(atom(), boolean()) ->
              ok | {error, any()}).
-compact_end(Id, Commit) ->
-    gen_server:call(Id, {compact_end, Commit}, ?DEF_TIMEOUT).
+finish_compaction(Id, Commit) ->
+    gen_server:call(Id, {finish_compaction, Commit}, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to put a record to a temporary new data file.
 %%
--spec(compact_put(atom(), KeyBin::binary(), ValueBin::binary()) ->
+-spec(put_value_to_new_db(atom(), KeyBin::binary(), ValueBin::binary()) ->
              ok | {error, any()}).
-compact_put(Id, KeyBin, ValueBin) ->
-    gen_server:call(Id, {compact_put, KeyBin, ValueBin}, ?DEF_TIMEOUT).
+put_value_to_new_db(Id, KeyBin, ValueBin) ->
+    gen_server:call(Id, {put_value_to_new_db, KeyBin, ValueBin}, ?DEF_TIMEOUT).
 
 
 %% @doc get database file path for calculating disk size.
@@ -262,8 +263,8 @@ handle_call(close, _From, #state{db      = DBModule,
     {reply, ok, State};
 
 
-handle_call(compact_start, _From, #state{db   = DBModule,
-                                         path = Path} = State) ->
+handle_call(run_compaction, _From, #state{db   = DBModule,
+                                          path = Path} = State) ->
     NewPath = gen_file_raw_path(Path),
     case filelib:ensure_dir(NewPath) of
         ok ->
@@ -280,23 +281,23 @@ handle_call(compact_start, _From, #state{db   = DBModule,
             {stop, Reason, State}
     end;
 
-handle_call({compact_put, KeyBin, ValueBin}, _From, #state{db           = DBModule,
-                                                           tmp_handler  = TmpHandler} = State) ->
+handle_call({put_value_to_new_db, KeyBin, ValueBin}, _From,
+            #state{db          = DBModule,
+                   tmp_handler = TmpHandler} = State) ->
     Reply = erlang:apply(DBModule, put, [TmpHandler, KeyBin, ValueBin]),
     {reply, Reply, State};
 
-handle_call({compact_end, Commit}, _From, #state{db           = DBModule,
-                                                 path         = Path,
-                                                 raw_path     = RawPath,
-                                                 handler      = Handler,
-                                                 tmp_raw_path = TmpPath,
-                                                 tmp_handler  = TmpHandler} = State) ->
-    _Res0 = erlang:apply(DBModule, close, [TmpHandler]),
+handle_call({finish_compaction, Commit}, _From, #state{db           = DBModule,
+                                                       path         = Path,
+                                                       raw_path     = RawPath,
+                                                       handler      = Handler,
+                                                       tmp_raw_path = TmpPath,
+                                                       tmp_handler  = TmpHandler} = State) ->
+    _ = erlang:apply(DBModule, close, [TmpHandler]),
 
     case Commit of
         true ->
-            _Res1 = erlang:apply(DBModule, close, [Handler]),
-
+            _ = erlang:apply(DBModule, close, [Handler]),
             leo_file:file_delete_all(RawPath),
             file:delete(Path),
 

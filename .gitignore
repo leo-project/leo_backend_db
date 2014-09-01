@@ -5,3 +5,4 @@ test/*.beam
 .leo_backend_db_dialyzer_plt
 leo_backend_db.dot
 leo_backend_db.png
+.rebar/

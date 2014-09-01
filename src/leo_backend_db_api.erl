@@ -33,8 +33,8 @@
 
 -export([new/4, put/3, get/2, delete/2, fetch/3, fetch/4, first/1,
          status/1,
-         compact_start/1, compact_put/3, compact_end/2,
-         compact_suspend/1, compact_resume/1,
+         run_compaction/1, finish_compaction/2,
+         put_value_to_new_db/3,
          get_db_raw_filepath/1,
          stop/1
         ]).
@@ -164,80 +164,36 @@ status(InstanceName) ->
     end.
 
 
-%% @doc Retrieve a process status. running represents doing compaction, idle is not.
--spec(get_pid_status(atom()) -> running | idle ).
-get_pid_status(Pid) ->
-    case leo_misc:get_env(?APP_NAME, Pid) of
-        undefined ->
-            idle;
-        {ok, Status} ->
-            Status
-    end.
-
-
-%% @doc Direct to start a compaction. assume InstanceName has only one instance.
--spec(compact_start(atom()) ->
+%% @doc Start the data-compaction
+-spec(run_compaction(atom()) ->
              ok | {error, any()}).
-compact_start(InstanceName) ->
-    Pid = get_object_storage_pid(InstanceName, none),
-    case get_pid_status(Pid) of
-        idle ->
-            %% invoke server method
-            ok = leo_misc:set_env(?APP_NAME, Pid, running),
-            ?SERVER_MODULE:compact_start(Pid);
-        running ->
-            {error, invalid_compaction_status}
-    end.
+run_compaction(InstanceName) ->
+    Pid = get_object_storage_pid(InstanceName),
+    ?SERVER_MODULE:run_compaction(Pid).
 
-%% @doc Direct to suspend a compaction. assume InstanceName has only one instance.
--spec(compact_suspend(atom()) ->
+
+%% @doc End the data-compaction
+-spec(finish_compaction(atom(), boolean()) ->
              ok | {error, any()}).
-compact_suspend(InstanceName) ->
-    Pid = get_object_storage_pid(InstanceName, none),
-    leo_misc:set_env(?APP_NAME, Pid, idle).
+finish_compaction(InstanceName, Commit) ->
+    Pid = get_object_storage_pid(InstanceName),
+    ?SERVER_MODULE:finish_compaction(Pid, Commit).
 
-%% @doc Direct to resume a compaction. assume InstanceName has only one instance.
--spec(compact_resume(atom()) ->
+
+%% @doc Put a record to a new db
+-spec(put_value_to_new_db(atom(), binary(), binary()) ->
              ok | {error, any()}).
-compact_resume(InstanceName) ->
-    Pid = get_object_storage_pid(InstanceName, none),
-    leo_misc:set_env(?APP_NAME, Pid, running).
-
-%% @doc Direct to end a compaction. assume InstanceName has only one instance.
--spec(compact_end(atom(), boolean()) ->
-             ok | {error, any()}).
-compact_end(InstanceName, Commit) ->
-    Pid = get_object_storage_pid(InstanceName, none),
-    case get_pid_status(Pid) of
-        idle ->
-            {error, invalid_compaction_status};
-        running ->
-            %% invoke server method
-            ok = leo_misc:set_env(?APP_NAME, Pid, idle),
-            ?SERVER_MODULE:compact_end(Pid, Commit)
-    end.
+put_value_to_new_db(InstanceName, KeyBin, ValueBin) ->
+    Id = get_object_storage_pid(InstanceName),
+    ?SERVER_MODULE:put_value_to_new_db(Id, KeyBin, ValueBin).
 
 
-%% @doc Direct to put a record to a temporary new data file. assume InstanceName has only one instance.
--spec(compact_put(atom(), KeyBin::binary(), ValueBin::binary()) ->
-             ok | {error, any()}).
-compact_put(InstanceName, KeyBin, ValueBin) ->
-    Id = get_object_storage_pid(InstanceName, none),
-    case get_pid_status(Id) of
-        idle ->
-            {error, invalid_compaction_status};
-        running ->
-            %% invoke server method
-            ?SERVER_MODULE:compact_put(Id, KeyBin, ValueBin)
-    end.
-
-
-%% @doc get database file path for calculating disk size. assume InstanceName has only one instance.
+%% @doc get the database filepath for calculating disk size
 -spec(get_db_raw_filepath(atom()) ->
              {ok, string()} | {error, any()}).
 get_db_raw_filepath(InstanceName) ->
     %% invoke server method
-    Id = get_object_storage_pid(InstanceName, none),
+    Id = get_object_storage_pid(InstanceName),
     ?SERVER_MODULE:get_db_raw_filepath(Id).
 
 
@@ -245,7 +201,7 @@ get_db_raw_filepath(InstanceName) ->
 %% INNTERNAL FUNCTIONS
 %%--------------------------------------------------------------------
 %% @doc start object storage application.
-%%
+%% @private
 -spec(start_app() ->
              ok | {error, any()}).
 start_app() ->
@@ -266,17 +222,18 @@ start_app() ->
 
 
 %% @doc get an object storage process-id.
-%%
--spec(get_object_storage_pid(atom(), any()) ->
+%% @private
+-spec(get_object_storage_pid(atom()) ->
+             atom()).
+get_object_storage_pid(InstanceName) ->
+    get_object_storage_pid(InstanceName, undefined).
+
+-spec(get_object_storage_pid(atom(), undefined|binary()) ->
              atom()).
 get_object_storage_pid(InstanceName, Arg) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
             undefined;
-        [{InstanceName, List}] when Arg == all ->
-            lists:map(fun({Id, _, _}) ->
-                              Id
-                      end, List);
         [{InstanceName, [H|_] = List}] ->
             case erlang:length(List) of
                 1 ->
@@ -290,7 +247,7 @@ get_object_storage_pid(InstanceName, Arg) ->
 
 
 %% @doc request an operation.
-%%
+%% @private
 -spec(do_request(type_of_methods(), list()) ->
              ok | {ok, binary()} | not_found | {error, any()}).
 do_request(get, [InstanceName, KeyBin]) ->
@@ -299,18 +256,8 @@ do_request(get, [InstanceName, KeyBin]) ->
 
 do_request(put, [InstanceName, KeyBin, ValueBin]) ->
     Id = get_object_storage_pid(InstanceName, KeyBin),
-    case get_pid_status(Id) of
-        idle ->
-            ?SERVER_MODULE:put(Id, KeyBin, ValueBin);
-        running ->
-            {error, doing_compaction}
-    end;
+    ?SERVER_MODULE:put(Id, KeyBin, ValueBin);
 
 do_request(delete, [InstanceName, KeyBin]) ->
     Id = get_object_storage_pid(InstanceName, KeyBin),
-    case get_pid_status(Id) of
-        idle ->
-            ?SERVER_MODULE:delete(Id, KeyBin);
-        running ->
-            {error, doing_compaction}
-    end.
+    ?SERVER_MODULE:delete(Id, KeyBin).
