@@ -20,7 +20,8 @@
 %%
 %% ---------------------------------------------------------------------
 %% Leo Backend DB  - bitcask
-%% @doc
+%% @doc Handling database operation for bitcask
+%% @reference [https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_bitcask.erl]
 %% @end
 %%======================================================================
 -module(leo_backend_db_bitcask).

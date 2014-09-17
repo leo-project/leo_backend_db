@@ -19,8 +19,9 @@
 %% under the License.
 %%
 %% ---------------------------------------------------------------------
-%% Leo Backend DB - bitcask
-%% @doc
+%% Leo Backend DB - ETS
+%% @doc Handling database operation for ETS
+%% @reference [https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_ets.erl]
 %% @end
 %%======================================================================
 -module(leo_backend_db_ets).
