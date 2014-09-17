@@ -46,8 +46,11 @@
 %%--------------------------------------------------------------------
 %% @doc create storage-processes.
 %%
--spec(new(atom(), integer(), backend_db(), string()) ->
-             ok | {error, any()}).
+-spec(new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
+             ok | {error, any()} when InstanceName::atom(),
+                                      NumOfDBProcs::pos_integer(),
+                                      BackendDB::backend_db(),
+                                      DBRootPath::string()).
 new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     case start_app() of
         ok ->
@@ -60,8 +63,8 @@ new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
 
 %% @doc Stop the instance
 %%
--spec(stop(atom()) ->
-             ok | {error, any()}).
+-spec(stop(InstanceName) ->
+             ok | {error, any()} when InstanceName::atom()).
 stop(InstanceName) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
@@ -78,35 +81,53 @@ stop(InstanceName) ->
 
 %% @doc Insert an object into backend-db.
 %%
--spec(put(atom(), binary(), binary()) ->
-             ok | {error, any()}).
+-spec(put(InstanceName, KeyBin, ValueBin) ->
+             ok | {error, any()} when InstanceName::atom(),
+                                      KeyBin::binary(),
+                                      ValueBin::binary()).
 put(InstanceName, KeyBin, ValueBin) ->
     do_request(put, [InstanceName, KeyBin, ValueBin]).
 
 
 %% @doc Retrieve an object from backend-db.
 %%
--spec(get(atom(), binary()) ->
-             {ok, binary()} | not_found | {error, any()}).
+-spec(get(InstanceName, KeyBin) ->
+             {ok, binary()} |
+             not_found |
+             {error, any()} when InstanceName::atom(),
+                                 KeyBin::binary()).
 get(InstanceName, KeyBin) ->
     do_request(get, [InstanceName, KeyBin]).
 
 
 %% @doc Delete an object from backend-db.
 %%
--spec(delete(atom(), binary()) ->
-             ok | {error, any()}).
+-spec(delete(InstanceName, KeyBin) ->
+             ok |
+             {error, any()} when InstanceName::atom(),
+                                 KeyBin::binary()).
 delete(InstanceName, KeyBin) ->
     do_request(delete, [InstanceName, KeyBin]).
 
 
 %% @doc Fetch objects from backend-db by key with function.
 %%
--spec(fetch(atom(), binary(), function()) ->
-             {ok, list()} | not_found | {error, any()}).
+-spec(fetch(InstanceName, KeyBin, Fun) ->
+             {ok, list()} |
+             not_found |
+             {error, any()} when InstanceName::atom(),
+                                 KeyBin::binary(),
+                                 Fun::function()).
 fetch(InstanceName, KeyBin, Fun) ->
     fetch(InstanceName, KeyBin, Fun, round(math:pow(2, 32))).
 
+-spec(fetch(InstanceName, KeyBin, Fun, MaxKeys) ->
+             {ok, list()} |
+             not_found |
+             {error, any()} when InstanceName::atom(),
+                                 KeyBin::binary(),
+                                 Fun::function(),
+                                 MaxKeys::pos_integer()).
 fetch(InstanceName, KeyBin, Fun, MaxKeys) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
@@ -126,8 +147,8 @@ fetch(Res) -> {ok, Res}.
 
 %% @doc Retrieve a first record from backend-db.
 %%
--spec(first(atom()) ->
-             {ok, list()} | {error, any()}).
+-spec(first(InstanceName) ->
+             {ok, list()} | {error, any()} when InstanceName::atom()).
 first(InstanceName) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
@@ -139,19 +160,21 @@ first(InstanceName) ->
                                           _Other     -> Acc
                                       end
                               end, [], List),
-            first1(lists:reverse(Res))
+            first_1(lists:reverse(Res))
     end.
-first1([]) ->
+
+%% @private
+first_1([]) ->
     not_found;
-first1(List) ->
+first_1(List) ->
     Index = erlang:phash2(List) rem length(List),
     {ok, lists:nth(Index+1, List)}.
 
 
 %% @doc Retrieve status from backend-db.
 %%
--spec(status(atom()) ->
-             list()).
+-spec(status(InstanceName) ->
+             [{atom(), term()}] when InstanceName::atom()).
 status(InstanceName) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
@@ -165,32 +188,35 @@ status(InstanceName) ->
 
 
 %% @doc Start the data-compaction
--spec(run_compaction(atom()) ->
-             ok | {error, any()}).
+-spec(run_compaction(InstanceName) ->
+             ok | {error, any()} when InstanceName::atom()).
 run_compaction(InstanceName) ->
     Pid = get_object_storage_pid(InstanceName),
     ?SERVER_MODULE:run_compaction(Pid).
 
 
 %% @doc End the data-compaction
--spec(finish_compaction(atom(), boolean()) ->
-             ok | {error, any()}).
+-spec(finish_compaction(InstanceName, Commit) ->
+             ok | {error, any()} when InstanceName::atom(),
+                                      Commit::boolean()).
 finish_compaction(InstanceName, Commit) ->
     Pid = get_object_storage_pid(InstanceName),
     ?SERVER_MODULE:finish_compaction(Pid, Commit).
 
 
 %% @doc Put a record to a new db
--spec(put_value_to_new_db(atom(), binary(), binary()) ->
-             ok | {error, any()}).
+-spec(put_value_to_new_db(InstanceName, KeyBin, ValueBin) ->
+             ok | {error, any()} when InstanceName::atom(),
+                                      KeyBin::binary(),
+                                      ValueBin::binary()).
 put_value_to_new_db(InstanceName, KeyBin, ValueBin) ->
     Id = get_object_storage_pid(InstanceName),
     ?SERVER_MODULE:put_value_to_new_db(Id, KeyBin, ValueBin).
 
 
 %% @doc get the database filepath for calculating disk size
--spec(get_db_raw_filepath(atom()) ->
-             {ok, string()} | {error, any()}).
+-spec(get_db_raw_filepath(InstanceName) ->
+             {ok, string()} | {error, any()} when InstanceName::atom()).
 get_db_raw_filepath(InstanceName) ->
     %% invoke server method
     Id = get_object_storage_pid(InstanceName),

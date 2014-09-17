@@ -31,15 +31,16 @@
 -export([open/1, open/2, close/1, status/1]).
 -export([get/2, put/3, delete/2, prefix_search/4, first/1]).
 
-%% @doc
+%% @doc Open a new ets datastore
 %%
--spec(open(atom() | string()) ->
-             ok).
+-spec(open(Table) ->
+             ok when Table::atom() | string()).
 open(Table) ->
     open(Table, [named_table, public, {read_concurrency, true}]).
 
--spec(open(atom() | string(), list()) ->
-             ok).
+-spec(open(Table, Option) ->
+             ok when Table::atom() | string(),
+                     Option::[atom()]).
 open(Table, Option) when is_atom(Table) ->
     Table = ets:new(Table, Option),
     ok;
@@ -47,24 +48,28 @@ open(Table, Option) ->
     open(list_to_atom(Table), Option).
 
 
-%% @doc close.
+%% @doc Close a ets data store
 %%
--spec(close(atom()) -> ok).
+-spec(close(Table) ->
+             ok when Table::atom()).
 close(_Table) ->
     ok.
 
 
 %% @doc Get the status information for this ets.
--spec(status(atom()) ->
-             [any()] | undefined).
+-spec(status(Table) ->
+             [any()] | undefined when Table::atom()).
 status(Table) ->
     ets:info(Table).
 
 
-%% @doc Retrieve an object from ets.
+%% @doc Retrieve an object from the ets.
 %%
--spec(get(atom(), binary()) ->
-             not_found | {ok, binary()} | {error, any()}).
+-spec(get(Table, Key) ->
+             not_found |
+             {ok, binary()} |
+             {error, any()} when Table::atom(),
+                                 Key::binary()).
 get(Table, Key) ->
     case catch ets:lookup(Table, Key) of
         [] ->
@@ -81,8 +86,10 @@ get(Table, Key) ->
 
 %% @doc Insert an object into ets.
 %%
--spec(put(pid(), binary(), binary()) ->
-             ok | {error, any()}).
+-spec(put(Table, Key, Value) ->
+             ok | {error, any()} when Table::pid(),
+                                      Key::binary(),
+                                      Value::binary()).
 put(Table, Key, Value) ->
     case catch ets:insert(Table, {Key, Value}) of
         true ->
@@ -100,10 +107,11 @@ put(Table, Key, Value) ->
     end.
 
 
-%% @doc Delete an object from ets.
+%% @doc Delete an object from the ets
 %%
--spec(delete(atom(), binary()) ->
-             ok | not_found | {error, any()}).
+-spec(delete(Table, Key) ->
+             ok | not_found | {error, any()} when Table::atom(),
+                                                  Key::binary()).
 delete(Table, Key) ->
     case get(Table, Key) of
         {ok, Value} ->
@@ -123,8 +131,13 @@ delete(Table, Key) ->
 
 %% @doc Retrieve objects from ets by a keyword.
 %%
--spec(prefix_search(pid(), binary(), function(), integer()) ->
-             {ok, list()} | not_found | {error, any()}).
+-spec(prefix_search(Table, Key, Fun, MaxKeys) ->
+             {ok, list()} |
+             not_found |
+             {error, any()} when Table::pid(),
+                                 Key::binary(),
+                                 Fun::function(),
+                                 MaxKeys::pos_integer()).
 prefix_search(Table, _Key, Fun, MaxKeys) ->
     fold1(catch ets:foldl(Fun, [], Table), MaxKeys).
 
@@ -136,10 +149,12 @@ fold1({error, Cause}, _)          -> {error, Cause};
 fold1(_, _)                       -> {error, 'badarg'}.
 
 
-%% @doc Retrieve first record from ets.
+%% @doc Retrieve a first record from the ets
 %%
--spec(first(pid()) ->
-             {ok, any()} | not_found | {error, any()}).
+-spec(first(Table) ->
+             {ok, any()} |
+             not_found |
+             {error, any()} when Table::pid()).
 first(Table) ->
     case catch ets:first(Table) of
         '$end_of_table' ->
