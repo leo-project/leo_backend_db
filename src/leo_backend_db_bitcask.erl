@@ -143,7 +143,7 @@ delete(Handler, Key) ->
 %% @doc Retrieve an objects from bitcask by the keyword and the function
 %%
 -spec(prefix_search(Handler, Key, Fun, MaxKeys) ->
-             {ok, list()} |
+             {ok, [any()]} |
              not_found |
              {error, any()} when Handler::reference(),
                                  Key::binary(),
@@ -172,7 +172,7 @@ first(Handler) ->
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
 %% @private
--spec(fold(first|fold, pid(), function(), integer()) ->
+-spec(fold(first|fold, reference(), function(), pos_integer()) ->
              {ok, any()} | not_found | {error, any()}).
 fold(Mode, Handler, Fun, MaxKeys) ->
     fold_1(Mode, catch bitcask:fold(Handler, Fun, []), MaxKeys).
