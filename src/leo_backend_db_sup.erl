@@ -80,66 +80,49 @@ init([]) ->
 start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     start_child(?MODULE, InstanceName, NumOfDBProcs, BackendDB, DBRootPath).
 
--spec(start_child(atom()|pid(), atom(), pos_integer(), backend_db(), string()) ->
+-spec(start_child(atom()|pid(), atom(), integer(), backend_db(), string()) ->
              ok | true).
 start_child(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     ok = leo_misc:init_env(),
     catch ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
+    start_child_1(SupRef, InstanceName, NumOfDBProcs - 1, BackendDB, DBRootPath, []).
 
+%% @private
+start_child_1(_, InstanceName, -1, _, _, Acc) ->
+    case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
+        [] ->
+            true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Acc});
+        [{InstanceName, _List}|_] ->
+            true = ets:delete(?ETS_TABLE_NAME, InstanceName),
+            true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Acc})
+    end,
+    ok;
+start_child_1(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath, Acc) ->
     BackendMod = backend_mod(BackendDB),
-    Fun = fun(DBNumber) ->
-                  {Id, StrDBNumber} =
-                      case (NumOfDBProcs == 1) of
-                          true ->
-                              {InstanceName, []};
-                          false ->
-                              NewDBNumber =  integer_to_list(DBNumber),
-                              {list_to_atom(atom_to_list(InstanceName)
-                                            ++ "_"
-                                            ++  NewDBNumber), NewDBNumber}
-                      end,
+    {Id, StrDBNumber} =
+        begin
+            NewDBNumber =  integer_to_list(NumOfDBProcs),
+            {list_to_atom(atom_to_list(InstanceName)
+                          ++ "_"
+                          ++  NewDBNumber), NewDBNumber}
+        end,
 
-                  Path = DBRootPath ++ StrDBNumber,
-                  Args = [Id, BackendMod, Path],
-                  ChildSpec = {Id,
-                               {leo_backend_db_server, start_link, Args},
-                               permanent, 2000, worker, [leo_backend_db_server]},
-                  case supervisor:start_child(SupRef, ChildSpec) of
-                      {ok, _Pid} when BackendDB == bitcask ->
-                          ok = bitcask:merge(Path),
-                          Id;
-                      {ok, _Pid} ->
-                          Id;
-                      Cause ->
-                          io:format("~w:~w - ~w ~p~n", [?MODULE, ?LINE, Id, Cause]),
-                          []
-                  end
-          end,
-    Ret = lists:map(Fun, lists:seq(0, NumOfDBProcs-1)),
+    Path = DBRootPath ++ StrDBNumber,
+    Args = [Id, BackendMod, Path],
+    ChildSpec = {Id,
+                 {leo_backend_db_server, start_link, Args},
+                 permanent, 2000, worker, [leo_backend_db_server]},
 
-    SupRef_1 = case is_atom(SupRef) of
-                   true  ->
-                       whereis(SupRef);
-                   false ->
-                       SupRef
-               end,
-
-    case supervisor:count_children(SupRef_1) of
-        [{specs,_},{active,Active},
-         {supervisors,_},{workers,Workers}] when Active == Workers ->
-            case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
-                [] ->
-                    true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret});
-                [{InstanceName, _List}|_] ->
-                    true = ets:delete(?ETS_TABLE_NAME, InstanceName),
-                    true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Ret})
-            end,
-            ok;
-        _ ->
-            error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "new/4"},
-                                    {line, ?LINE},
-                                    {body, "Could NOT start worker processes"}]),
+    case supervisor:start_child(SupRef, ChildSpec) of
+        {ok, _Pid} when BackendDB == bitcask ->
+            ok = bitcask:merge(Path),
+            start_child_1(SupRef, InstanceName, NumOfDBProcs - 1,
+                          BackendDB, DBRootPath, [Id|Acc]);
+        {ok, _Pid} ->
+            start_child_1(SupRef, InstanceName, NumOfDBProcs - 1,
+                          BackendDB, DBRootPath, [Id|Acc]);
+        Cause ->
+            io:format("~w:~w - ~w ~p~n", [?MODULE, ?LINE, Id, Cause]),
             case ?MODULE:stop() of
                 ok ->
                     exit(invalid_launch);
