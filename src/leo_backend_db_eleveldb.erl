@@ -18,6 +18,9 @@
 %% specific language governing permissions and limitations
 %% under the License.
 %%
+%% @doc Handling database operation for eleveldb
+%% @reference [https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_eleveldb.erl]
+%% @end
 %%======================================================================
 -module(leo_backend_db_eleveldb).
 -author('Yosuke Hara').
@@ -34,15 +37,16 @@
 %%--------------------------------------------------------------------
 %% API
 %%--------------------------------------------------------------------
-%% @doc open leveldb.
+%% @doc Open a new or existing leveldb datastore for read-only access
 %%
--spec(open(string()) ->
-             {error, any()} | {ok, pid()}).
+-spec(open(Path) ->
+             {error, any()} | {ok, pid()} when Path::string()).
 open(Path) ->
     open(Path, []).
 
--spec(open(string(), list()) ->
-             {error, any()} | {ok, pid()}).
+-spec(open(Path, Config) ->
+             {error, any()} | {ok, pid()} when Path::string(),
+                                               Config::[tuple()]).
 open(Path, Config) ->
     WriteBufferMin  = leo_misc:get_value(write_buffer_size_min, Config,      256 * 1024),
     WriteBufferMax  = leo_misc:get_value(write_buffer_size_max, Config, 3 * 1024 * 1024),
@@ -87,16 +91,18 @@ open_1(Path, Options) ->
     end.
 
 
-%% @doc close bitcask.
+%% @doc Close a leveldb data store and flush any pending writes to disk
 %%
--spec(close(binary()) -> ok).
+-spec(close(Handler) ->
+             ok when Handler::binary()).
 close(Handler) ->
     catch eleveldb:close(Handler),
     ok.
 
 
 %% @doc Get the status information for this eleveldb backend
--spec status(binary()) -> [{atom(), term()}].
+-spec(status(Handler) ->
+             [{atom(), term()}] when Handler::binary()).
 status(Handler) ->
     {ok, Stats} = eleveldb:status(Handler, <<"leveldb.stats">>),
     [{stats, Stats}].
@@ -104,8 +110,11 @@ status(Handler) ->
 
 %% @doc Retrieve an object from the eleveldb.
 %%
--spec(get(binary(), string()) ->
-             {ok, binary()} | not_found | {error, any()}).
+-spec(get(Handler, Key) ->
+             {ok, binary()} |
+             not_found |
+             {error, any()} when Handler::binary(),
+                                 Key::binary()).
 get(Handler, Key) ->
     case catch eleveldb:get(Handler, Key, []) of
         not_found ->
@@ -127,8 +136,10 @@ get(Handler, Key) ->
 
 %% @doc Insert an object into the eleveldb.
 %%
--spec(put(binary(), binary(), binary()) ->
-             ok | {error, any()}).
+-spec(put(Handler, Key, Value) ->
+             ok | {error, any()} when Handler::binary(),
+                                      Key::binary(),
+                                      Value::binary()).
 put(Handler, Key, Value) ->
     case catch eleveldb:put(Handler, Key, Value, []) of
         ok ->
@@ -148,8 +159,9 @@ put(Handler, Key, Value) ->
 
 %% @doc Delete an object from the eleveldb.
 %%
--spec(delete(binary(), binary()) ->
-             ok | {error, any()}).
+-spec(delete(Handler, Key) ->
+             ok | {error, any()} when Handler::binary(),
+                                      Key::binary()).
 delete(Handler, Key) ->
     case catch eleveldb:delete(Handler, Key, []) of
         ok ->
@@ -169,8 +181,11 @@ delete(Handler, Key) ->
 
 %% @doc Retrieve objects from eleveldb by a keyword.
 %%
--spec(prefix_search(binary(), binary(), fun(), integer()) ->
-             {ok, [_]} | not_found | {error, any()}).
+-spec(prefix_search(Handler, Key, Fun, MaxKeys) ->
+             {ok, [_]} | not_found | {error, any()} when Handler::binary(),
+                                                         Key::binary(),
+                                                         Fun::fun(),
+                                                         MaxKeys::integer()).
 prefix_search(Handler, Key, Fun, MaxKeys) ->
     try
         {ok, Itr} = eleveldb:iterator(Handler, []),
@@ -191,10 +206,10 @@ prefix_search(Handler, Key, Fun, MaxKeys) ->
     end.
 
 
-%% @doc Retrieve 'first' record from eleveldb.
+%% @doc Retrieve a first record from eleveldb.
 %%
--spec(first(binary()) ->
-             {ok, any()} | not_found | {error, any()}).
+-spec(first(Handler) ->
+             {ok, any()} | not_found | {error, any()} when Handler::binary()).
 first(Handler) ->
     case catch eleveldb:iterator(Handler, []) of
         {ok, Itr} ->

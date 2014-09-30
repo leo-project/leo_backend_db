@@ -20,7 +20,8 @@
 %%
 %% ---------------------------------------------------------------------
 %% Leo Backend DB  - bitcask
-%% @doc
+%% @doc Handling database operation for bitcask
+%% @reference [https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_bitcask.erl]
 %% @end
 %%======================================================================
 -module(leo_backend_db_bitcask).
@@ -31,15 +32,15 @@
 -export([open/1, open/2, close/1, status/1]).
 -export([get/2, put/3, delete/2, prefix_search/4, first/1]).
 
-%% @doc open bitcask.
+%% @doc Open a new or existing bitcask datastore for read-only access
 %%
--spec(open(string()) ->
-             {ok, pid()} | {error, any()}).
+-spec(open(Path) ->
+             {ok, pid()} | {error, any()} when Path::string()).
 open(Path) ->
     open(Path, [read_write]).
 
--spec(open(string(), list()) ->
-             {ok, pid()} | {error, any()}).
+-spec(open(Path, Options) ->
+             {ok, pid()} | {error, any()} when Path::string(), Options::list()).
 open(Path, Options) ->
     Flags = case application:get_env('leo_backend_db', 'bitcask_flags') of
                 {ok, V} -> V;
@@ -62,15 +63,17 @@ open(Path, Options) ->
     end.
 
 
-%% @doc close bitcask.
+%% @doc Close a bitcask data store and flush any pending writes to disk
 %%
--spec(close(reference()) -> ok).
+-spec(close(Handler) ->
+             ok when Handler::reference()).
 close(Handler) ->
     bitcask:close(Handler).
 
 
-%% @doc Get the status information for this bitcask backend
--spec status(reference()) -> [{atom(), term()}].
+%% @doc Retrive the status information for this bitcask backend
+-spec(status(Handler) ->
+                    [{atom(), term()}] when Handler::reference()).
 status(Handler) ->
     {KeyCount, Status} = bitcask:status(Handler),
     [{key_count, KeyCount}, {status, Status}].
@@ -78,8 +81,11 @@ status(Handler) ->
 
 %% @doc Retrieve an object from bitcask.
 %%
--spec(get(pid(), binary()) ->
-             not_found | {ok, binary()} | {error, any()}).
+-spec(get(Handler, Key) ->
+             not_found |
+             {ok, binary()} |
+             {error, any()} when Handler::reference(),
+                                 Key::binary()).
 get(Handler, Key) ->
     case catch bitcask:get(Handler, Key) of
         {ok, Value} ->
@@ -96,8 +102,10 @@ get(Handler, Key) ->
 
 %% @doc Insert an object into bitcask.
 %%
--spec(put(pid(), binary(), binary()) ->
-             ok | {error, any()}).
+-spec(put(Handler, Key, Value) ->
+             ok | {error, any()} when Handler::reference(),
+                                      Key::binary(),
+                                      Value::binary()).
 put(Handler, Key, Value) ->
     case catch bitcask:put(Handler, Key, Value) of
         ok ->
@@ -117,8 +125,9 @@ put(Handler, Key, Value) ->
 
 %% @doc Delete an object from bitcask.
 %%
--spec(delete(pid(), binary()) ->
-             ok | {error, any()}).
+-spec(delete(Handler, Key) ->
+             ok | {error, any()} when Handler::reference(),
+                                      Key::binary()).
 delete(Handler, Key) ->
     case catch bitcask:delete(Handler, Key) of
         ok ->
@@ -131,18 +140,25 @@ delete(Handler, Key) ->
     end.
 
 
-%% @doc Retrieve objects from bitcask by a keyword.
+%% @doc Retrieve an objects from bitcask by the keyword and the function
 %%
--spec(prefix_search(pid(), binary(), function(), integer()) ->
-             {ok, list()} | not_found | {error, any()}).
+-spec(prefix_search(Handler, Key, Fun, MaxKeys) ->
+             {ok, [any()]} |
+             not_found |
+             {error, any()} when Handler::reference(),
+                                 Key::binary(),
+                                 Fun::function(),
+                                 MaxKeys::pos_integer()).
 prefix_search(Handler, _Key, Fun, MaxKeys) ->
     fold(fold, Handler, Fun, MaxKeys).
 
 
-%% @doc Retrieve first record from bitcask
+%% @doc Retrieve a first record from bitcask
 %%
--spec(first(pid()) ->
-             {ok, any()} | not_found | {error, any()}).
+-spec(first(Handler) ->
+             {ok, any()} |
+             not_found |
+             {error, any()} when Handler::reference()).
 first(Handler) ->
     fold(first, Handler, fun(K, V, Acc0) ->
                                  case Acc0 of
@@ -156,7 +172,7 @@ first(Handler) ->
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
 %% @private
--spec(fold(first|fold, pid(), function(), integer()) ->
+-spec(fold(first|fold, reference(), function(), pos_integer()) ->
              {ok, any()} | not_found | {error, any()}).
 fold(Mode, Handler, Fun, MaxKeys) ->
     fold_1(Mode, catch bitcask:fold(Handler, Fun, []), MaxKeys).

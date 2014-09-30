@@ -20,7 +20,8 @@
 %%
 %% ---------------------------------------------------------------------
 %% Leo Bakcend DB - Server
-%% @doc
+%% @doc The gen_server process for the process of database as part of a supervision tree
+%% @reference [https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_server.erl]
 %% @end
 %%======================================================================
 -module(leo_backend_db_server).
@@ -69,11 +70,15 @@
 %%--------------------------------------------------------------------
 %% API
 %%--------------------------------------------------------------------
-%% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
-%% Description: Starts the server
+%% @doc Creates the gen_server process as part of a supervision tree
+-spec(start_link(Id, DBModule, Path) ->
+             {ok,pid()} | ignore | {error, any()} when Id::atom(),
+                                                       DBModule::atom(),
+                                                       Path::string()).
 start_link(Id, DBModule, Path) ->
     gen_server:start_link({local, Id}, ?MODULE, [Id, DBModule, Path], []).
 
+%% @doc Close the process
 stop(Id) ->
     gen_server:call(Id, stop).
 
@@ -83,16 +88,21 @@ stop(Id) ->
 %%--------------------------------------------------------------------
 %% @doc Insert an object into backend-db.
 %%
--spec(put(Id::atom(), KeyBin::binary(), ValueBin::binary()) ->
-             ok | {error, any()}).
+-spec(put(Id, KeyBin, ValueBin) ->
+             ok | {error, any()} when Id::atom(),
+                                      KeyBin::binary(),
+                                      ValueBin::binary()).
 put(Id, KeyBin, ValueBin) ->
     gen_server:call(Id, {put, KeyBin, ValueBin}, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve an object from backend-db.
 %%
--spec(get(Id::atom(), KeyBin::binary()) ->
-             {ok, binary()} | not_found | {error, any()}).
+-spec(get(Id, KeyBin) ->
+             {ok, binary()} |
+             not_found |
+             {error, any()} when Id::atom(),
+                                 KeyBin::binary()).
 get(Id, KeyBin) ->
     gen_server:call(Id, {get, KeyBin}, ?DEF_TIMEOUT).
 
@@ -107,64 +117,72 @@ delete(Id, KeyBin) ->
 
 %% @doc Fetch records from backend-db.
 %%
--spec(fetch(Id::atom(), KeyBin::binary(), Fun::function(), MaxKeys::integer()) ->
-             {ok, list()} | not_found | {error, any()}).
+-spec(fetch(Id, KeyBin, Fun, MaxKeys) ->
+             {ok, list()} |
+             not_found |
+             {error, any()} when Id::atom(),
+                                 KeyBin::binary(),
+                                 Fun::function(),
+                                 MaxKeys::integer()).
 fetch(Id, KeyBin, Fun, MaxKeys) ->
     gen_server:call(Id, {fetch, KeyBin, Fun, MaxKeys}, ?DEF_TIMEOUT).
 
 
 %% @doc Retrieve a first record from backend-db.
 %%
--spec(first(atom()) ->
-             {ok, any(), any()} | {error, any()}).
+-spec(first(Id) ->
+             {ok, any(), any()} | {error, any()} when Id::atom()).
 first(Id) ->
     gen_server:call(Id, first, ?DEF_TIMEOUT).
 
 
-%% Retrieve status from backend-db.
+%% @doc Retrieve the current status from the database
 %%
--spec(status(atom()) ->
-             list()).
+-spec(status(Id) ->
+             [{atom(), term()}] when Id::atom()).
 status(Id) ->
     gen_server:call(Id, status, ?DEF_TIMEOUT).
 
 
-%% Close a DB
+%% @doc Close the database
 %%
--spec(close(atom()) ->
-             ok).
+-spec(close(Id) ->
+             ok when Id::atom()).
 close(Id) ->
     gen_server:call(Id, close, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to start a compaction.
 %%
--spec(run_compaction(atom()) ->
-             ok | {error, any()}).
+-spec(run_compaction(Id) ->
+             ok | {error, any()} when Id::atom()).
 run_compaction(Id) ->
     gen_server:call(Id, run_compaction, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to end a compaction.
 %%
--spec(finish_compaction(atom(), boolean()) ->
-             ok | {error, any()}).
+-spec(finish_compaction(Id, Commit) ->
+             ok | {error, any()} when Id::atom(),
+                                      Commit::boolean()).
 finish_compaction(Id, Commit) ->
     gen_server:call(Id, {finish_compaction, Commit}, ?DEF_TIMEOUT).
 
 
 %% @doc Direct to put a record to a temporary new data file.
 %%
--spec(put_value_to_new_db(atom(), KeyBin::binary(), ValueBin::binary()) ->
-             ok | {error, any()}).
+-spec(put_value_to_new_db(Id, KeyBin, ValueBin) ->
+             ok | {error, any()} when Id::atom(),
+                                      KeyBin::binary(),
+                                      ValueBin::binary()).
 put_value_to_new_db(Id, KeyBin, ValueBin) ->
     gen_server:call(Id, {put_value_to_new_db, KeyBin, ValueBin}, ?DEF_TIMEOUT).
 
 
 %% @doc get database file path for calculating disk size.
 %%
--spec(get_db_raw_filepath(atom()) ->
-             {ok, string()} | {error, any()}).
+-spec(get_db_raw_filepath(Id) ->
+             {ok, string()} | {error, any()} when Id::atom()).
 get_db_raw_filepath(Id) ->
     gen_server:call(Id, get_db_raw_filepath, ?DEF_TIMEOUT).
 
@@ -172,11 +190,7 @@ get_db_raw_filepath(Id) ->
 %%--------------------------------------------------------------------
 %% GEN_SERVER CALLBACKS
 %%--------------------------------------------------------------------
-%% Function: init(Args) -> {ok, State}          |
-%%                         {ok, State, Timeout} |
-%%                         ignore               |
-%%                         {stop, Reason}
-%% Description: Initiates the server
+%% @doc gen_server callback - Module:init(Args) -> Result
 init([Id, leo_backend_db_ets = DBModule, Table]) ->
     ok = DBModule:open(Table),
     {ok, #state{id       = Id,
@@ -208,6 +222,7 @@ init([Id, DBModule, Path0]) ->
             {stop, Cause}
     end.
 
+%% @doc gen_server callback - Module:handle_call(Request, From, State) -> Result
 handle_call(stop, _From, #state{id = Id,
                                 db = DBModule,
                                 handler = Handler} = State) ->
@@ -324,25 +339,21 @@ handle_call(get_db_raw_filepath, _From, #state{path = Path} = State) ->
     {reply, {ok, Path}, State}.
 
 
-%% Function: handle_cast(Msg, State) -> {noreply, State}          |
-%%                                      {noreply, State, Timeout} |
-%%                                      {stop, Reason, State}
-%% Description: Handling cast messages
+%% @doc gen_server callback - Module:handle_cast(Request, State) -> Result
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-%% Function: handle_info(Info, State) -> {noreply, State}          |
-%%                                       {noreply, State, Timeout} |
-%%                                       {stop, Reason, State}
-%% Description: Handling all non call/cast messages
+%% @doc gen_server callback - Module:handle_info(Info, State) -> Result
 handle_info(_Info, State) ->
     {noreply, State}.
 
-%% Function: terminate(Reason, State) -> void()
-%% Description: This function is called by a gen_server when it is about to
+%% @doc This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any necessary
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
+%% <p>
+%% gen_server callback - Module:terminate(Reason, State)
+%% </p>
 terminate(_Reason, #state{id      = Id,
                           db      = DBModule,
                           handler = Handler}) ->
@@ -353,17 +364,21 @@ terminate(_Reason, #state{id      = Id,
     catch erlang:apply(DBModule, close, [Handler]),
     ok.
 
-%% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% Description: Convert process state when code is changed
+%% @doc Convert process state when code is changed
+%% <p>
+%% gen_server callback - Module:code_change(OldVsn, State, Extra) -> {ok, NewState} | {error, Reason}.
+%% </p>
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %%--------------------------------------------------------------------
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
+%% @private
 gen_file_raw_path(FilePath) ->
     FilePath ++ "_" ++ integer_to_list(leo_date:now()) ++ "/".
 
+%% @private
 get_raw_path(SymLinkPath) ->
     case file:read_link(SymLinkPath) of
         {ok, FileName} ->

@@ -20,7 +20,8 @@
 %%
 %% ---------------------------------------------------------------------
 %% Leo Backend DB - Supervisor.
-%% @doc
+%% @doc The supervisor of leo_backend_db
+%% @reference [https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_sup.erl]
 %% @end
 %%======================================================================
 -module(leo_backend_db_sup).
@@ -43,16 +44,13 @@
 %%-----------------------------------------------------------------------
 %% API-1
 %%-----------------------------------------------------------------------
-%% @spec () -> ok
-%% @doc start link.
+%% @doc Creates a supervisor process as part of a supervision tree
 %% @end
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 
-%% @spec () -> ok |
-%%             not_started
-%% @doc stop process.
+%% @doc Stop process
 stop() ->
     case whereis(?MODULE) of
         Pid when is_pid(Pid) ->
@@ -66,10 +64,8 @@ stop() ->
 %% ---------------------------------------------------------------------
 %% Callbacks
 %% ---------------------------------------------------------------------
-%% @spec (Params) -> ok
-%% @doc stop process.
+%% @doc supervisor callback - Module:init(Args) -> Result
 %% @end
-%% @private
 init([]) ->
     {ok, {{one_for_one, 5, 60}, []}}.
 
@@ -77,8 +73,8 @@ init([]) ->
 %%-----------------------------------------------------------------------
 %% API-2
 %%-----------------------------------------------------------------------
-%%
-%%
+%% @doc Creates the gen_server process as part of a supervision tree
+%% @end
 -spec(start_child(atom(), pos_integer(), backend_db(), string()) ->
              ok | no_return()).
 start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
@@ -122,11 +118,11 @@ start_child(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     Ret = lists:map(Fun, lists:seq(0, NumOfDBProcs-1)),
 
     SupRef_1 = case is_atom(SupRef) of
-                  true  ->
-                      whereis(SupRef);
-                  false ->
-                      SupRef
-              end,
+                   true  ->
+                       whereis(SupRef);
+                   false ->
+                       SupRef
+               end,
 
     case supervisor:count_children(SupRef_1) of
         [{specs,_},{active,Active},
