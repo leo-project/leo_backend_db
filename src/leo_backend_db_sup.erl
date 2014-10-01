@@ -85,10 +85,11 @@ start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
 start_child(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
     ok = leo_misc:init_env(),
     catch ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
-    start_child_1(SupRef, InstanceName, NumOfDBProcs - 1, BackendDB, DBRootPath, []).
+    start_child_1(SupRef, InstanceName, NumOfDBProcs - 1, (NumOfDBProcs == 1),
+                  BackendDB, DBRootPath, []).
 
 %% @private
-start_child_1(_, InstanceName, -1, _, _, Acc) ->
+start_child_1(_, InstanceName, -1, _, _, _, Acc) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
             true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Acc});
@@ -97,14 +98,17 @@ start_child_1(_, InstanceName, -1, _, _, Acc) ->
             true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Acc})
     end,
     ok;
-start_child_1(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath, Acc) ->
+start_child_1(SupRef, InstanceName, NumOfDBProcs, IsOneDevice, BackendDB, DBRootPath, Acc) ->
     BackendMod = backend_mod(BackendDB),
     {Id, StrDBNumber} =
-        begin
-            NewDBNumber =  integer_to_list(NumOfDBProcs),
-            {list_to_atom(atom_to_list(InstanceName)
-                          ++ "_"
-                          ++  NewDBNumber), NewDBNumber}
+        case IsOneDevice of
+            true ->
+                {InstanceName, []};
+            false ->
+                NewDBNumber =  integer_to_list(NumOfDBProcs),
+                {list_to_atom(atom_to_list(InstanceName)
+                              ++ "_"
+                              ++  NewDBNumber), NewDBNumber}
         end,
 
     Path = DBRootPath ++ StrDBNumber,
@@ -117,10 +121,10 @@ start_child_1(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath, Acc) ->
         {ok, _Pid} when BackendDB == bitcask ->
             ok = bitcask:merge(Path),
             start_child_1(SupRef, InstanceName, NumOfDBProcs - 1,
-                          BackendDB, DBRootPath, [Id|Acc]);
+                          IsOneDevice, BackendDB, DBRootPath, [Id|Acc]);
         {ok, _Pid} ->
             start_child_1(SupRef, InstanceName, NumOfDBProcs - 1,
-                          BackendDB, DBRootPath, [Id|Acc]);
+                          IsOneDevice, BackendDB, DBRootPath, [Id|Acc]);
         Cause ->
             io:format("~w:~w - ~w ~p~n", [?MODULE, ?LINE, Id, Cause]),
             case ?MODULE:stop() of
