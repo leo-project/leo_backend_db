@@ -19,7 +19,7 @@
 %% under the License.
 %%
 %% @doc Handling database operation for eleveldb
-%% @reference [https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_eleveldb.erl]
+%% @reference https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_eleveldb.erl
 %% @end
 %%======================================================================
 -module(leo_backend_db_eleveldb).
