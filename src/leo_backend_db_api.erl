@@ -21,7 +21,7 @@
 %% ---------------------------------------------------------------------
 %% Leo Backend DB - API
 %% @doc leo_backend_db's API
-%% @reference [https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_api.erl]
+%% @reference https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_api.erl
 %% @end
 %%======================================================================
 -module(leo_backend_db_api).

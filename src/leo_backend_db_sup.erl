@@ -21,7 +21,7 @@
 %% ---------------------------------------------------------------------
 %% Leo Backend DB - Supervisor.
 %% @doc The supervisor of leo_backend_db
-%% @reference [https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_sup.erl]
+%% @reference https://github.com/leo-project/leo_backend_db/blob/master/src/leo_backend_db_sup.erl
 %% @end
 %%======================================================================
 -module(leo_backend_db_sup).

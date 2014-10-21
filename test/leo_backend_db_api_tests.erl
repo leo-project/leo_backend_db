@@ -137,7 +137,7 @@ inspect(Instance, BackendDb, Path) ->
                         ?TEST_KEY_BIN1,?TEST_KEY_BIN2,?TEST_KEY_BIN3,?TEST_KEY_BIN4,?TEST_KEY_BIN5]),
 
     {ok, {_, _}} = leo_backend_db_api:first(Instance),
-    Res4 =  leo_backend_db_api:status(Instance),
+    Res4 = leo_backend_db_api:status(Instance),
     ?assertEqual(?NUM_OF_PROCS, length(Res4)),
 
     {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun),
