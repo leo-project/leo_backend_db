@@ -33,6 +33,8 @@
 -define(DEF_MAX_OPEN_FILES,     32).
 -define(DEF_CACHE_SIZE,   67108864). %% 64MB
 -define(DEF_BLOCK_SIZE,      10240). %% 1KB * 10
+-define(ETS_TBL_LEVELDB, 'leo_eleveldb').
+-define(ETS_COL_LEVELDB_KEY_CNT, 'key_count').
 
 %%--------------------------------------------------------------------
 %% API
@@ -66,7 +68,8 @@ open(Path, Config) ->
             open_1(Path, Options);
         {error, Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "open/2"},
+                                   [{module, ?MODULE_STRING},
+                                    {function, "open/2"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
@@ -77,15 +80,24 @@ open(Path, Config) ->
 open_1(Path, Options) ->
     case catch eleveldb:open(Path, Options) of
         {ok, Handler} ->
+            CurCount = eleveldb:fold_keys(Handler, fun(_K, Acc) ->
+                                                           Acc + 1
+                                                   end, 0, []),
+            catch ets:new(?ETS_TBL_LEVELDB,
+                          [named_table, public, {write_concurrency, true}]),
+            true = ets:insert(?ETS_TBL_LEVELDB,
+                              {{?ETS_COL_LEVELDB_KEY_CNT,self()}, CurCount}),
             {ok, Handler};
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "open/1"},
+                                   [{module, ?MODULE_STRING},
+                                    {function, "open/1"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause};
         {error, Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "open/1"},
+                                   [{module, ?MODULE_STRING},
+                                    {function, "open/1"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
@@ -94,7 +106,7 @@ open_1(Path, Options) ->
 %% @doc Close a leveldb data store and flush any pending writes to disk
 %%
 -spec(close(Handler) ->
-             ok when Handler::binary()).
+             ok when Handler::eleveldb:db_ref()).
 close(Handler) ->
     catch eleveldb:close(Handler),
     ok.
@@ -102,10 +114,14 @@ close(Handler) ->
 
 %% @doc Get the status information for this eleveldb backend
 -spec(status(Handler) ->
-             [{atom(), term()}] when Handler::binary()).
-status(Handler) ->
-    {ok, Stats} = eleveldb:status(Handler, <<"leveldb.stats">>),
-    [{stats, Stats}].
+             [{atom(), term()}] when Handler::eleveldb:db_ref()).
+status(_Handler) ->
+    case ets:lookup(?ETS_TBL_LEVELDB, {?ETS_COL_LEVELDB_KEY_CNT, self()}) of
+        [{{key_count,_Pid},Count}|_] ->
+            [{key_count, Count}];
+        _ ->
+            [{key_count, 0}]
+    end.
 
 
 %% @doc Retrieve an object from the eleveldb.
@@ -113,7 +129,7 @@ status(Handler) ->
 -spec(get(Handler, Key) ->
              {ok, binary()} |
              not_found |
-             {error, any()} when Handler::binary(),
+             {error, any()} when Handler::eleveldb:db_ref(),
                                  Key::binary()).
 get(Handler, Key) ->
     case catch eleveldb:get(Handler, Key, []) of
@@ -123,12 +139,14 @@ get(Handler, Key) ->
             {ok, Value};
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "get/2"},
+                                   [{module, ?MODULE_STRING},
+                                    {function, "get/2"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause};
         {error, Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "get/2"},
+                                   [{module, ?MODULE_STRING},
+                                    {function, "get/2"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
@@ -137,21 +155,25 @@ get(Handler, Key) ->
 %% @doc Insert an object into the eleveldb.
 %%
 -spec(put(Handler, Key, Value) ->
-             ok | {error, any()} when Handler::binary(),
+             ok | {error, any()} when Handler::eleveldb:db_ref(),
                                       Key::binary(),
                                       Value::binary()).
 put(Handler, Key, Value) ->
     case catch eleveldb:put(Handler, Key, Value, []) of
         ok ->
+            catch ets:update_counter(
+                    ?ETS_TBL_LEVELDB, {?ETS_COL_LEVELDB_KEY_CNT, self()}, 1),
             ok;
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "put/3"},
+                                   [{module, ?MODULE_STRING},
+                                    {function, "put/3"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause};
         {error, Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "put/3"},
+                                   [{module, ?MODULE_STRING},
+                                    {function, "put/3"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
@@ -160,21 +182,33 @@ put(Handler, Key, Value) ->
 %% @doc Delete an object from the eleveldb.
 %%
 -spec(delete(Handler, Key) ->
-             ok | {error, any()} when Handler::binary(),
+             ok | {error, any()} when Handler::eleveldb:db_ref(),
                                       Key::binary()).
 delete(Handler, Key) ->
-    case catch eleveldb:delete(Handler, Key, []) of
-        ok ->
+    case ?MODULE:get(Handler, Key) of
+        {ok,_} ->
+            case catch eleveldb:delete(Handler, Key, []) of
+                ok ->
+                    catch ets:update_counter(
+                            ?ETS_TBL_LEVELDB,
+                            {?ETS_COL_LEVELDB_KEY_CNT, self()}, -1),
+                    ok;
+                {'EXIT', Cause} ->
+                    error_logger:error_msg("~p,~p,~p,~p~n",
+                                           [{module, ?MODULE_STRING},
+                                            {function, "delete/2"},
+                                            {line, ?LINE}, {body, Cause}]),
+                    {error, Cause};
+                {error, Cause} ->
+                    error_logger:error_msg("~p,~p,~p,~p~n",
+                                           [{module, ?MODULE_STRING},
+                                            {function, "delete/2"},
+                                            {line, ?LINE}, {body, Cause}]),
+                    {error, Cause}
+            end;
+        not_found ->
             ok;
-        {'EXIT', Cause} ->
-            error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "delete/2"},
-                                    {line, ?LINE}, {body, Cause}]),
-            {error, Cause};
         {error, Cause} ->
-            error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "delete/2"},
-                                    {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
 
@@ -182,7 +216,7 @@ delete(Handler, Key) ->
 %% @doc Retrieve objects from eleveldb by a keyword.
 %%
 -spec(prefix_search(Handler, Key, Fun, MaxKeys) ->
-             {ok, [_]} | not_found | {error, any()} when Handler::binary(),
+             {ok, [_]} | not_found | {error, any()} when Handler::eleveldb:db_ref(),
                                                          Key::binary(),
                                                          Fun::fun(),
                                                          MaxKeys::integer()).
@@ -209,7 +243,7 @@ prefix_search(Handler, Key, Fun, MaxKeys) ->
 %% @doc Retrieve a first record from eleveldb.
 %%
 -spec(first(Handler) ->
-             {ok, any()} | not_found | {error, any()} when Handler::binary()).
+             {ok, any()} | not_found | {error, any()} when Handler::eleveldb:db_ref()).
 first(Handler) ->
     case catch eleveldb:iterator(Handler, []) of
         {ok, Itr} ->
@@ -223,12 +257,14 @@ first(Handler) ->
             end;
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "first/1"},
+                                   [{module, ?MODULE_STRING},
+                                    {function, "first/1"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause};
         {error, Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
-                                   [{module, ?MODULE_STRING}, {function, "first/1"},
+                                   [{module, ?MODULE_STRING},
+                                    {function, "first/1"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
