@@ -92,6 +92,11 @@ get(Handler, Key) ->
             {ok, Value};
         not_found ->
             not_found;
+        {error, Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING}, {function, "get/2"},
+                                    {line, ?LINE}, {body, Cause}]),
+            {error, Cause};
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
                                    [{module, ?MODULE_STRING}, {function, "get/2"},
@@ -132,6 +137,11 @@ delete(Handler, Key) ->
     case catch bitcask:delete(Handler, Key) of
         ok ->
             ok;
+        {error, Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING}, {function, "delete/2"},
+                                    {line, ?LINE}, {body, Cause}]),
+            {error, Cause};
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
                                    [{module, ?MODULE_STRING}, {function, "delete/2"},
