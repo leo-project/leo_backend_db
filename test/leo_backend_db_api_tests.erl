@@ -31,14 +31,17 @@
 -define(TEST_INSTANCE_NAME1, 'test_bitcask').
 -define(TEST_INSTANCE_NAME2, 'test_leveldb').
 -define(TEST_INSTANCE_NAME3, 'test_ets').
+-define(TEST_INSTANCE_NAME4, 'test_rocksdb').
 -define(NUM_OF_PROCS,       8).
 
 -define(BACKEND_DB_BITCASK, 'bitcask').
 -define(BACKEND_DB_LEVELDB, 'leveldb').
 -define(BACKEND_DB_ETS,     'ets').
+-define(BACKEND_DB_ROCKSDB, 'rocksdb').
 
 -define(PATH1,              "./work/backenddb1").
 -define(PATH2,              "./work/backenddb2").
+-define(PATH3,              "./work/backenddb3").
 
 -define(TEST_BUCKET_BIN, list_to_binary("air")).
 -define(TEST_KEY_BIN,    list_to_binary("air/on/g/string/music")).
@@ -64,6 +67,7 @@ backend_db_test_() ->
     {foreach, fun setup/0, fun teardown/1,
      [{with, [T]} || T <- [fun all_bitcask_/1,
                            fun all_eleveldb_/1,
+                           fun all_erocksdb_/1,
                            fun all_ets_/1,
                            fun compact_/1
                           ]]}.
@@ -90,6 +94,10 @@ all_eleveldb_(_) ->
 
 all_ets_(_) ->
     inspect(?TEST_INSTANCE_NAME3, ?BACKEND_DB_ETS, "test_table"),
+    ok.
+
+all_erocksdb_(_) ->
+    inspect(?TEST_INSTANCE_NAME4, ?BACKEND_DB_ROCKSDB, ?PATH3),
     ok.
 
 inspect(Instance, BackendDb, Path) ->
