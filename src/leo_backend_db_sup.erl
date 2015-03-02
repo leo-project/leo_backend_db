@@ -160,6 +160,8 @@ backend_mod(bitcask) ->
     leo_backend_db_bitcask;
 backend_mod(leveldb) ->
     leo_backend_db_eleveldb;
+backend_mod(rocksdb) ->
+    leo_backend_db_erocksdb;
 backend_mod(ets) ->
     leo_backend_db_ets;
 backend_mod(_) ->

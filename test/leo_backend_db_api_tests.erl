@@ -39,6 +39,7 @@
 
 -define(PATH1,              "./work/backenddb1").
 -define(PATH2,              "./work/backenddb2").
+-define(PATH3,              "./work/backenddb3").
 
 -define(TEST_BUCKET_BIN, list_to_binary("air")).
 -define(TEST_KEY_BIN,    list_to_binary("air/on/g/string/music")).
