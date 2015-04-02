@@ -95,6 +95,8 @@ all_ets_(_) ->
 
 inspect(Instance, BackendDb, Path) ->
     ok = leo_backend_db_api:new(Instance, ?NUM_OF_PROCS, BackendDb, Path),
+    true  = leo_backend_db_api:has_instance(Instance),
+    false = leo_backend_db_api:has_instance('not_exist_instance'),
 
     %% #1
     ok = leo_backend_db_api:put(Instance, ?TEST_KEY_BIN, ?TEST_VAL_BIN),
