@@ -95,6 +95,8 @@ all_ets_(_) ->
 
 inspect(Instance, BackendDb, Path) ->
     ok = leo_backend_db_api:new(Instance, ?NUM_OF_PROCS, BackendDb, Path),
+    true  = leo_backend_db_api:has_instance(Instance),
+    false = leo_backend_db_api:has_instance('not_exist_instance'),
 
     %% #1
     ok = leo_backend_db_api:put(Instance, ?TEST_KEY_BIN, ?TEST_VAL_BIN),
@@ -147,6 +149,28 @@ inspect(Instance, BackendDb, Path) ->
     {ok, Res6} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun, 3),
     ?assertEqual(3, length(Res6)),
 
+    case Instance of
+        test_leveldb ->
+            lists:foreach(fun({K,V}) ->
+                                  ok = leo_backend_db_api:put(Instance, K, V)
+                          end, [{term_to_binary({"dir_1","dir_1/1"}), ?TEST_VAL_BIN1},
+                                {term_to_binary({"dir_1","dir_1/2"}), ?TEST_VAL_BIN2},
+                                {term_to_binary({"dir_1","dir_1/3"}), ?TEST_VAL_BIN3},
+                                {term_to_binary({"dir_1","dir_1/4"}), ?TEST_VAL_BIN4},
+                                {term_to_binary({"dir_1","dir_1/5"}), ?TEST_VAL_BIN5}
+                               ]),
+            Bin = term_to_binary({"dir_1",""}),
+            {ok, Res7} = leo_backend_db_api:fetch(
+                           Instance, binary:part(Bin, 0, byte_size(Bin)-1), Fun),
+            ?assertEqual(5, length(Res7)),
+
+            lists:foreach(fun({Key_7, Val_7}) ->
+                                  ?debugVal({key, binary_to_term(Key_7)}),
+                                  ?debugVal({value, Val_7})
+                          end, lists:sort(Res7));
+        _ ->
+            void
+    end,
     ok.
 
 

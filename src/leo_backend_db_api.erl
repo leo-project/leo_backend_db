@@ -37,6 +37,7 @@
          run_compaction/1, finish_compaction/2,
          put_value_to_new_db/3,
          get_db_raw_filepath/1,
+         has_instance/1,
          stop/1
         ]).
 
@@ -222,6 +223,20 @@ get_db_raw_filepath(InstanceName) ->
     %% invoke server method
     Id = get_object_storage_pid(InstanceName),
     ?SERVER_MODULE:get_db_raw_filepath(Id).
+
+
+%% @doc has the instance into the db
+-spec(has_instance(InstanceName) ->
+             {ok, string()} | {error, any()} when InstanceName::atom()).
+has_instance(InstanceName) ->
+    case catch ets:lookup(?ETS_TABLE_NAME, InstanceName) of
+        {'EXIT',_Cause} ->
+            false;
+        [] ->
+            false;
+        [{InstanceName,_List}] ->
+            true
+    end.
 
 
 %%--------------------------------------------------------------------
