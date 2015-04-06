@@ -283,7 +283,7 @@ first(Handler) ->
 fold_loop({ok, K}, Itr, Fun, Acc, Prefix, MaxKeys) ->
     KeySize    = byte_size(K),
     PrefixSize = byte_size(Prefix),
-    fold_loop_1(K, [], Itr, Fun, Acc,
+    fold_loop_1(K, <<>>, Itr, Fun, Acc,
                 Prefix, MaxKeys, KeySize, PrefixSize);
 
 fold_loop({ok, K, V}, Itr, Fun, Acc, Prefix, MaxKeys) ->

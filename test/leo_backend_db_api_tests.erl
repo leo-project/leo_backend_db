@@ -111,17 +111,17 @@ inspect(Instance, BackendDb, Path) ->
     %% #2 not-found.
     ?assertEqual(not_found, leo_backend_db_api:first(Instance)),
 
-    Fun = case BackendDb of
+    Fun_1 = case BackendDb of
               ets ->
                   fun({K, V}, Acc) ->
                           [{K,V} | Acc]
                   end;
-              _bitcask_or_leveldb ->
+                _ ->
                   fun(K, V, Acc) ->
                           [{K,V} | Acc]
                   end
           end,
-    ?assertEqual(not_found, leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun)),
+    ?assertEqual(not_found, leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun_1)),
 
     %% #3 [get, fetch, first, status]
     lists:foreach(fun({K,V}) ->
@@ -143,31 +143,30 @@ inspect(Instance, BackendDb, Path) ->
     Res4 = leo_backend_db_api:status(Instance),
     ?assertEqual(?NUM_OF_PROCS, length(Res4)),
 
-    {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun),
+    {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun_1),
     ?assertEqual(5, length(Res5)),
 
-    {ok, Res6} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun, 3),
+    {ok, Res6} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun_1, 3),
     ?assertEqual(3, length(Res6)),
 
     case Instance of
         test_leveldb ->
             lists:foreach(fun({K,V}) ->
                                   ok = leo_backend_db_api:put(Instance, K, V)
-                          end, [{term_to_binary({"dir_1","dir_1/1"}), ?TEST_VAL_BIN1},
-                                {term_to_binary({"dir_1","dir_1/2"}), ?TEST_VAL_BIN2},
-                                {term_to_binary({"dir_1","dir_1/3"}), ?TEST_VAL_BIN3},
-                                {term_to_binary({"dir_1","dir_1/4"}), ?TEST_VAL_BIN4},
-                                {term_to_binary({"dir_1","dir_1/5"}), ?TEST_VAL_BIN5}
+                          end, [{term_to_binary({1,    "dir_1","dir_1/1"}), ?TEST_VAL_BIN1},
+                                {term_to_binary({1024, "dir_1","dir_1/2"}), ?TEST_VAL_BIN2},
+                                {term_to_binary({2048, "dir_1","dir_1/3"}), ?TEST_VAL_BIN3},
+                                {term_to_binary({4096, "dir_1","dir_1/4"}), ?TEST_VAL_BIN4},
+                                {term_to_binary({8192, "dir_1","dir_1/5"}), ?TEST_VAL_BIN5}
                                ]),
-            Bin = term_to_binary({"dir_1",""}),
-            {ok, Res7} = leo_backend_db_api:fetch(
-                           Instance, binary:part(Bin, 0, byte_size(Bin)-1), Fun),
-            ?assertEqual(5, length(Res7)),
 
-            lists:foreach(fun({Key_7, Val_7}) ->
-                                  ?debugVal({key, binary_to_term(Key_7)}),
-                                  ?debugVal({value, Val_7})
-                          end, lists:sort(Res7));
+            Fun_2 = fun(K, V, Acc) ->
+                            ?debugVal({leveldb, K, V, Acc}),
+                            [{K,V} | Acc]
+                    end,
+            {ok, Res7} = leo_backend_db_api:fetch(Instance, <<131,104>>, Fun_2),
+            ?assertEqual(5, length(Res7)),
+            ok;
         _ ->
             void
     end,
