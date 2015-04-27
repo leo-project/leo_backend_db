@@ -228,7 +228,7 @@ prefix_search(Handler, Key, Fun, MaxKeys) ->
             [] ->
                 not_found;
             Acc ->
-                {ok, lists:reverse(Acc)}
+                {ok, lists:sort(Acc)}
         end
     catch
         _:Cause ->
