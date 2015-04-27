@@ -280,12 +280,13 @@ first(Handler) ->
                 {error, invalid_iterator|iterator_closed},
                 binary(), function(), [], binary(), integer()) ->
              [tuple()]).
+fold_loop(_,_Itr,_Fun, Acc,_Prefix, 0) ->
+    Acc;
 fold_loop({ok, K}, Itr, Fun, Acc, Prefix, MaxKeys) ->
     KeySize    = byte_size(K),
     PrefixSize = byte_size(Prefix),
     fold_loop_1(K, <<>>, Itr, Fun, Acc,
                 Prefix, MaxKeys, KeySize, PrefixSize);
-
 fold_loop({ok, K, V}, Itr, Fun, Acc, Prefix, MaxKeys) ->
     KeySize    = byte_size(K),
     PrefixSize = byte_size(Prefix),
