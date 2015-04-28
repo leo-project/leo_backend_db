@@ -193,7 +193,7 @@ fold_1(_, [],_) ->
 fold_1(first, [{K, V}|_],_) ->
     {ok, K, V};
 fold_1(fold,  List, MaxKeys) when is_list(List) ->
-    {ok, lists:sublist(lists:reverse(List), MaxKeys)};
+    {ok, lists:sublist(lists:sort(List), MaxKeys)};
 fold_1(_, {'EXIT', Cause},_) ->
     {error, Cause};
 fold_1(_, {error, Cause},_) ->
