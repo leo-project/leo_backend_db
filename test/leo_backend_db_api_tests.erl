@@ -66,6 +66,7 @@ backend_db_test_() ->
      [{with, [T]} || T <- [fun all_bitcask_/1,
                            fun all_eleveldb_/1,
                            fun all_ets_/1,
+                           fun first_/1,
                            fun compact_/1
                           ]]}.
 
@@ -199,6 +200,25 @@ compact_(_) ->
     {ok, Val} = leo_backend_db_api:get(Id, Key),
     ok.
 
+first_(_) ->
+    Id = ?TEST_INSTANCE_NAME1,
+    Key = <<"key">>,
+    Val = <<"val">>,
+
+    ok = leo_backend_db_api:new(Id, 1, ?BACKEND_DB_BITCASK, ?PATH3),
+    TestData = [leo_backend_db_api:put(Id, <<Key/binary, Idx>>, Val) || Idx <- lists:seq($a, $z)],
+    DelCount = delete_all(Id),
+    ?assertEqual(DelCount, length(TestData)),
+    ok.
+
+delete_all(Id) ->
+    delete_all(Id, leo_backend_db_api:first(Id), 0).
+
+delete_all(_Id, not_found, Count) ->
+    Count;
+delete_all(Id, {ok, {K, _}}, Count) ->
+    leo_backend_db_api:delete(Id, K),
+    delete_all(Id, leo_backend_db_api:first(Id), Count + 1).
 
 proper_test_() ->
     {timeout, 60000, ?_assertEqual([], proper:module(leo_backend_db_api_prop))}.
