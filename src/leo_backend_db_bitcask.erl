@@ -28,6 +28,7 @@
 -author('Yosuke Hara').
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("bitcask/include/bitcask.hrl").
 
 -export([open/1, open/2, close/1, status/1]).
 -export([get/2, put/3, delete/2, prefix_search/4, first/1]).
@@ -170,13 +171,20 @@ prefix_search(Handler, _Key, Fun, MaxKeys) ->
              not_found |
              {error, any()} when Handler::reference()).
 first(Handler) ->
-    fold(first, Handler, fun(K, V, Acc0) ->
-                                 case Acc0 of
-                                     [] -> [{K, V} | Acc0];
-                                     _  -> Acc0
-                                 end
-                         end, 1).
-
+    ok = bitcask:iterator(Handler, 0, 0),
+    try
+        case bitcask:iterator_next(Handler) of
+            #bitcask_entry{ key = Key } ->
+                {ok, Val} = get(Handler, Key),
+                {ok, Key, Val};
+            not_found ->
+                not_found;
+            Error ->
+                {error, Error}
+        end
+    after
+        bitcask:iterator_release(Handler)
+    end.
 
 %%--------------------------------------------------------------------
 %% INNER FUNCTIONS
@@ -193,7 +201,7 @@ fold_1(_, [],_) ->
 fold_1(first, [{K, V}|_],_) ->
     {ok, K, V};
 fold_1(fold,  List, MaxKeys) when is_list(List) ->
-    {ok, lists:sublist(lists:reverse(List), MaxKeys)};
+    {ok, lists:sublist(lists:sort(List), MaxKeys)};
 fold_1(_, {'EXIT', Cause},_) ->
     {error, Cause};
 fold_1(_, {error, Cause},_) ->

@@ -228,7 +228,7 @@ prefix_search(Handler, Key, Fun, MaxKeys) ->
             [] ->
                 not_found;
             Acc ->
-                {ok, lists:reverse(Acc)}
+                {ok, lists:sort(Acc)}
         end
     catch
         _:Cause ->
@@ -280,12 +280,13 @@ first(Handler) ->
                 {error, invalid_iterator|iterator_closed},
                 binary(), function(), [], binary(), integer()) ->
              [tuple()]).
+fold_loop(_,_Itr,_Fun, Acc,_Prefix, MaxKeys) when MaxKeys =< length(Acc) ->
+    Acc;
 fold_loop({ok, K}, Itr, Fun, Acc, Prefix, MaxKeys) ->
     KeySize    = byte_size(K),
     PrefixSize = byte_size(Prefix),
-    fold_loop_1(K, [], Itr, Fun, Acc,
+    fold_loop_1(K, <<>>, Itr, Fun, Acc,
                 Prefix, MaxKeys, KeySize, PrefixSize);
-
 fold_loop({ok, K, V}, Itr, Fun, Acc, Prefix, MaxKeys) ->
     KeySize    = byte_size(K),
     PrefixSize = byte_size(Prefix),
@@ -300,8 +301,8 @@ fold_loop({error,_},_Itr,_Fun, Acc,_Prefix,_MaxKeys) ->
              any()).
 fold_loop_1(_K,_V, Itr, Fun, Acc, Prefix, MaxKeys, KeySize, PrefixSize)
   when KeySize =< PrefixSize ->
-    fold_loop(eleveldb:iterator_move(Itr, next),
-              Itr, Fun, Acc, Prefix, MaxKeys);
+    Ret = eleveldb:iterator_move(Itr, next),
+    fold_loop(Ret, Itr, Fun, Acc, Prefix, MaxKeys);
 
 fold_loop_1(K, V, Itr, Fun, Acc, Prefix, MaxKeys,_KeySize, PrefixSize) ->
     DstPrefix = binary:part(K, 0, PrefixSize),
@@ -309,7 +310,7 @@ fold_loop_1(K, V, Itr, Fun, Acc, Prefix, MaxKeys,_KeySize, PrefixSize) ->
         Prefix ->
             Acc_1 = Fun(K, V, Acc),
             Ret = eleveldb:iterator_move(Itr, next),
-            fold_loop(Ret, Itr, Fun, Acc_1, Prefix, MaxKeys - 1);
+            fold_loop(Ret, Itr, Fun, Acc_1, Prefix, MaxKeys);
         _ ->
             Acc
     end.

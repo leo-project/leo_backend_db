@@ -197,18 +197,18 @@ init([Id, leo_backend_db_ets = DBModule, Table]) ->
                 db       = DBModule,
                 handler  = list_to_atom(Table)}};
 
-init([Id, DBModule, Path0]) ->
+init([Id, DBModule, Path]) ->
     {ok, Curr} = file:get_cwd(),
-    Path1 = case Path0 of
-                "/"   ++ _Rest -> Path0;
-                "../" ++ _Rest -> Path0;
+    Path1 = case Path of
+                "/"   ++ _Rest -> Path;
+                "../" ++ _Rest -> Path;
                 "./"  ++  Rest -> Curr ++ "/" ++ Rest;
-                _              -> Curr ++ "/" ++ Path0
+                _              -> Curr ++ "/" ++ Path
             end,
 
     case get_raw_path(Path1) of
         {ok, RawPath} ->
-            case DBModule:open(Path0) of
+            case DBModule:open(Path) of
                 {ok, Handler} ->
                     {ok, #state{id       = Id,
                                 db       = DBModule,
