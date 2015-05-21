@@ -103,7 +103,7 @@ start_child_1(SupRef, InstanceName, NumOfDBProcs, IsOneDevice, BackendDB, DBRoot
     {Id, StrDBNumber} =
         case IsOneDevice of
             true ->
-                {list_to_atom(atom_to_list(InstanceName) ++ "_0"), "0"};
+                {InstanceName, []};
             false ->
                 NewDBNumber =  integer_to_list(NumOfDBProcs),
                 {list_to_atom(atom_to_list(InstanceName)
