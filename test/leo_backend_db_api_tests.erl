@@ -31,11 +31,13 @@
 -define(TEST_INSTANCE_NAME1, 'test_bitcask').
 -define(TEST_INSTANCE_NAME2, 'test_leveldb').
 -define(TEST_INSTANCE_NAME3, 'test_ets').
+-define(TEST_INSTANCE_NAME4, 'test_rocksdb').
 -define(NUM_OF_PROCS,       8).
 
 -define(BACKEND_DB_BITCASK, 'bitcask').
 -define(BACKEND_DB_LEVELDB, 'leveldb').
 -define(BACKEND_DB_ETS,     'ets').
+-define(BACKEND_DB_ROCKSDB, 'rocksdb').
 
 -define(PATH1,              "./work/backenddb1").
 -define(PATH2,              "./work/backenddb2").
@@ -65,6 +67,7 @@ backend_db_test_() ->
     {foreach, fun setup/0, fun teardown/1,
      [{with, [T]} || T <- [fun all_bitcask_/1,
                            fun all_eleveldb_/1,
+                           fun all_erocksdb_/1,
                            fun all_ets_/1,
                            fun first_/1,
                            fun compact_/1
@@ -94,10 +97,12 @@ all_ets_(_) ->
     inspect(?TEST_INSTANCE_NAME3, ?BACKEND_DB_ETS, "test_table"),
     ok.
 
+all_erocksdb_(_) ->
+    inspect(?TEST_INSTANCE_NAME4, ?BACKEND_DB_ROCKSDB, ?PATH3),
+    ok.
+
 inspect(Instance, BackendDb, Path) ->
     ok = leo_backend_db_api:new(Instance, ?NUM_OF_PROCS, BackendDb, Path),
-    true  = leo_backend_db_api:has_instance(Instance),
-    false = leo_backend_db_api:has_instance('not_exist_instance'),
 
     %% #1
     ok = leo_backend_db_api:put(Instance, ?TEST_KEY_BIN, ?TEST_VAL_BIN),
@@ -112,17 +117,17 @@ inspect(Instance, BackendDb, Path) ->
     %% #2 not-found.
     ?assertEqual(not_found, leo_backend_db_api:first(Instance)),
 
-    Fun_1 = case BackendDb of
+    Fun = case BackendDb of
               ets ->
                   fun({K, V}, Acc) ->
                           [{K,V} | Acc]
                   end;
-                _ ->
+              _bitcask_or_leveldb ->
                   fun(K, V, Acc) ->
                           [{K,V} | Acc]
                   end
           end,
-    ?assertEqual(not_found, leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun_1)),
+    ?assertEqual(not_found, leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun)),
 
     %% #3 [get, fetch, first, status]
     lists:foreach(fun({K,V}) ->
@@ -144,15 +149,17 @@ inspect(Instance, BackendDb, Path) ->
     Res4 = leo_backend_db_api:status(Instance),
     ?assertEqual(?NUM_OF_PROCS, length(Res4)),
 
-    {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun_1),
+    {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun),
     ?assertEqual(5, length(Res5)),
 
-    {ok, Res6} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun_1, 3),
+    {ok, Res6} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun, 3),
     ?assertEqual(3, length(Res6)),
 
     case Instance of
         test_leveldb ->
+
             lists:foreach(fun({K,V}) ->
+
                                   ok = leo_backend_db_api:put(Instance, K, V)
                           end, [{term_to_binary({1,    "dir_1","dir_1/1"}), ?TEST_VAL_BIN1},
                                 {term_to_binary({1024, "dir_1","dir_1/2"}), ?TEST_VAL_BIN2},
@@ -162,6 +169,7 @@ inspect(Instance, BackendDb, Path) ->
                                ]),
 
             Fun_2 = fun(K, V, Acc) ->
+
                             ?debugVal({leveldb, K, V, Acc}),
                             [{K,V} | Acc]
                     end,
@@ -215,6 +223,7 @@ delete_all(Id) ->
     delete_all(Id, leo_backend_db_api:first(Id), 0).
 
 delete_all(_Id, not_found, Count) ->
+
     Count;
 delete_all(Id, {ok, {K, _}}, Count) ->
     leo_backend_db_api:delete(Id, K),
