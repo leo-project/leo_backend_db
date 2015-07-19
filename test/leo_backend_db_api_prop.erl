@@ -39,7 +39,7 @@
          postcondition/3]).
 
 
--type db_type() :: 'bitcask' | 'leveldb'.
+-type db_type() :: 'bitcask' | 'leveldb' | 'erocksdb'.
 
 -record(state, {stored = []  :: [string()],  %% list of objects stored in DB
                 type         :: db_type()
