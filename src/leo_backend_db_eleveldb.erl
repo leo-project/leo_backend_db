@@ -278,7 +278,7 @@ first(Handler) ->
 -spec(fold_loop({ok, binary(), binary()} |
                 {ok, binary()} |
                 {error, invalid_iterator|iterator_closed},
-                binary(), function(), [], binary(), integer()) ->
+                eleveldb:itr_ref(), function(), [], binary(), integer()) ->
              [tuple()]).
 fold_loop(_,_Itr,_Fun, Acc,_Prefix, MaxKeys) when MaxKeys =< length(Acc) ->
     Acc;
