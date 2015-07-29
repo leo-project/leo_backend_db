@@ -190,7 +190,7 @@ first(Handler) ->
 %% INNER FUNCTIONS
 %%--------------------------------------------------------------------
 %% @private
--spec(fold(first|fold, reference(), function(), pos_integer()) ->
+-spec(fold(fold, reference(), function(), pos_integer()) ->
              {ok, any()} | not_found | {error, any()}).
 fold(Mode, Handler, Fun, MaxKeys) ->
     fold_1(Mode, catch bitcask:fold(Handler, Fun, []), MaxKeys).
@@ -198,8 +198,6 @@ fold(Mode, Handler, Fun, MaxKeys) ->
 %% @private
 fold_1(_, [],_) ->
     not_found;
-fold_1(first, [{K, V}|_],_) ->
-    {ok, K, V};
 fold_1(fold,  List, MaxKeys) when is_list(List) ->
     {ok, lists:sublist(lists:sort(List), MaxKeys)};
 fold_1(_, {'EXIT', Cause},_) ->
