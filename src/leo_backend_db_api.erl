@@ -227,7 +227,7 @@ get_db_raw_filepath(InstanceName) ->
 
 %% @doc has the instance into the db
 -spec(has_instance(InstanceName) ->
-             {ok, string()} | {error, any()} when InstanceName::atom()).
+             boolean() when InstanceName::atom()).
 has_instance(InstanceName) ->
     case catch ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         {'EXIT',_Cause} ->
