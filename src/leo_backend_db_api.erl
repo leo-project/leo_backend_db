@@ -137,8 +137,12 @@ fetch(InstanceName, KeyBin, Fun, MaxKeys) ->
         [{InstanceName, List}] ->
             Res = lists:foldl(fun(Id, Acc) ->
                                       case ?SERVER_MODULE:fetch(Id, KeyBin, Fun, MaxKeys) of
-                                          {ok, Ret} -> [Acc|Ret];
-                                          _Other    -> Acc
+                                          {ok, Ret} ->
+                                              [Acc|Ret];
+                                          not_found ->
+                                              Acc;
+                                          {error, Cause} ->
+                                              erlang:throw(Cause)
                                       end
                               end, [], List),
             fetch(lists:sublist(lists:reverse(lists:flatten(Res)), MaxKeys))
