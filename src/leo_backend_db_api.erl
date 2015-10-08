@@ -135,20 +135,29 @@ fetch(InstanceName, KeyBin, Fun, MaxKeys) ->
         [] ->
             not_found;
         [{InstanceName, List}] ->
-            Res = lists:foldl(fun(Id, Acc) ->
-                                      case ?SERVER_MODULE:fetch(Id, KeyBin, Fun, MaxKeys) of
-                                          {ok, Ret} ->
-                                              [Acc|Ret];
-                                          not_found ->
-                                              Acc;
-                                          {error, Cause} ->
-                                              erlang:throw(Cause)
-                                      end
-                              end, [], List),
-            fetch(lists:sublist(lists:reverse(lists:flatten(Res)), MaxKeys))
+            case catch lists:foldl(
+                         fun(Id, Acc) ->
+                                 case ?SERVER_MODULE:fetch(Id, KeyBin, Fun, MaxKeys) of
+                                     {ok, Ret} ->
+                                         [Acc|Ret];
+                                     not_found ->
+                                         Acc;
+                                     {error, Cause} ->
+                                         erlang:error(Cause)
+                                 end
+                         end, [], List) of
+                {'EXIT', Cause} ->
+                    {error, Cause};
+                RetL ->
+                    fetch(lists:sublist(
+                            lists:reverse(
+                              lists:flatten(RetL)), MaxKeys))
+            end
     end.
-fetch([])  -> not_found;
-fetch(Res) -> {ok, Res}.
+fetch([]) ->
+    not_found;
+fetch(Res) ->
+    {ok, Res}.
 
 
 %% @doc Retrieve a first record from backend-db.
