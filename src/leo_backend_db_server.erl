@@ -257,7 +257,13 @@ handle_call({delete, KeyBin}, _From, #state{db      = DBModule,
 
 handle_call({fetch, KeyBin, Fun, MaxKeys}, _From, #state{db      = DBModule,
                                                          handler = Handler} = State) ->
-    Reply = erlang:apply(DBModule, prefix_search, [Handler, KeyBin, Fun, MaxKeys]),
+    Reply = case catch erlang:apply(DBModule, prefix_search,
+                                    [Handler, KeyBin, Fun, MaxKeys]) of
+                {'EXIT', Cause} ->
+                    {error, Cause};
+                Ret ->
+                    Ret
+            end,
     {reply, Reply, State};
 
 handle_call(first, _From, #state{db      = DBModule,
