@@ -25,7 +25,6 @@
 %% @end
 %%======================================================================
 -module(leo_backend_db_bitcask).
--author('Yosuke Hara').
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("bitcask/include/bitcask.hrl").

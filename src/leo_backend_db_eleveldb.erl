@@ -23,16 +23,15 @@
 %% @end
 %%======================================================================
 -module(leo_backend_db_eleveldb).
--author('Yosuke Hara').
 
 -include_lib("eunit/include/eunit.hrl").
 
 -export([open/1, open/2, close/1, status/1]).
 -export([get/2, put/3, delete/2, prefix_search/4, first/1]).
 
--define(DEF_MAX_OPEN_FILES,     32).
--define(DEF_CACHE_SIZE,   67108864). %% 64MB
--define(DEF_BLOCK_SIZE,      10240). %% 1KB * 10
+-define(DEF_MAX_OPEN_FILES, 32).
+-define(DEF_CACHE_SIZE, 67108864). %% 64MB
+-define(DEF_BLOCK_SIZE, 10240). %% 1KB * 10
 -define(ETS_TBL_LEVELDB, 'leo_eleveldb').
 -define(ETS_COL_LEVELDB_KEY_CNT, 'key_count').
 
@@ -50,17 +49,17 @@ open(Path) ->
              {error, any()} | {ok, pid()} when Path::string(),
                                                Config::[tuple()]).
 open(Path, Config) ->
-    WriteBufferMin  = leo_misc:get_value(write_buffer_size_min, Config,      256 * 1024),
-    WriteBufferMax  = leo_misc:get_value(write_buffer_size_max, Config, 3 * 1024 * 1024),
+    WriteBufferMin = leo_misc:get_value(write_buffer_size_min, Config, 256 * 1024),
+    WriteBufferMax = leo_misc:get_value(write_buffer_size_max, Config, 3 * 1024 * 1024),
     WriteBufferSize = WriteBufferMin + random:uniform(1 + WriteBufferMax - WriteBufferMin),
-    MaxOpenFiles    = leo_misc:get_value(max_open_files,  Config, ?DEF_MAX_OPEN_FILES),
-    CacheSize       = leo_misc:get_value(cache_size,      Config, ?DEF_CACHE_SIZE),
-    BlockSize       = leo_misc:get_value(block_size,      Config, ?DEF_BLOCK_SIZE),
+    MaxOpenFiles = leo_misc:get_value(max_open_files, Config, ?DEF_MAX_OPEN_FILES),
+    CacheSize = leo_misc:get_value(cache_size, Config, ?DEF_CACHE_SIZE),
+    BlockSize = leo_misc:get_value(block_size, Config, ?DEF_BLOCK_SIZE),
     Options = [{create_if_missing, true},
                {write_buffer_size, WriteBufferSize},
-               {max_open_files,    MaxOpenFiles},
-               {cache_size,        CacheSize},
-               {block_size,        BlockSize}
+               {max_open_files, MaxOpenFiles},
+               {cache_size, CacheSize},
+               {block_size, BlockSize}
               ],
 
     case filelib:ensure_dir(Path) of

@@ -26,8 +26,6 @@
 %%======================================================================
 -module(leo_backend_db_sup).
 
--author('Yosuke Hara').
-
 -behaviour(supervisor).
 
 -include("leo_backend_db.hrl").
@@ -61,6 +59,7 @@ stop() ->
             not_started
     end.
 
+
 %% ---------------------------------------------------------------------
 %% Callbacks
 %% ---------------------------------------------------------------------
@@ -89,7 +88,7 @@ start_child(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
                   BackendDB, DBRootPath, []).
 
 %% @private
-start_child_1(_, InstanceName, -1, _, _, _, Acc) ->
+start_child_1(_, InstanceName, -1,_,_,_, Acc) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
             true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Acc});
