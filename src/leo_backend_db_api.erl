@@ -26,9 +26,6 @@
 %%======================================================================
 -module(leo_backend_db_api).
 
--author('Yosuke Hara').
--author('Yoshiyuki Kanno').
-
 -include("leo_backend_db.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -168,22 +165,23 @@ first(InstanceName) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
             not_found;
-        [{InstanceName, List}] ->
-            Res = lists:foldl(fun(Id, Acc) ->
-                                      case ?SERVER_MODULE:first(Id) of
-                                          {ok, K, V} -> [{K,V}|Acc];
-                                          _Other     -> Acc
-                                      end
-                              end, [], List),
-            first_1(lists:reverse(Res))
+        [{InstanceName, RetL}] ->
+            first_1(RetL, [])
     end.
 
 %% @private
-first_1([]) ->
+first_1([], []) ->
     not_found;
-first_1(List) ->
-    Index = erlang:phash2(List) rem length(List),
-    {ok, lists:nth(Index+1, List)}.
+first_1([], Acc) ->
+    Ret = erlang:hd(lists:sort(Acc)),
+    {ok, Ret};
+first_1([H|T], Acc) ->
+    case ?SERVER_MODULE:first(H) of
+        {ok, K, V} ->
+            first_1(T, [{K, V}|Acc]);
+        _Other ->
+            first_1(T, Acc)
+    end.
 
 
 %% @doc Retrieve status from backend-db.
