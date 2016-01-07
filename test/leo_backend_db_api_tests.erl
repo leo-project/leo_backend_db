@@ -24,7 +24,6 @@
 %% @end
 %%====================================================================
 -module(leo_backend_db_api_tests).
--author('Yosuke Hara').
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -35,26 +34,25 @@
 
 -define(BACKEND_DB_BITCASK, 'bitcask').
 -define(BACKEND_DB_LEVELDB, 'leveldb').
--define(BACKEND_DB_ETS,     'ets').
+-define(BACKEND_DB_ETS, 'ets').
 
--define(PATH1,              "./work/backenddb1").
--define(PATH2,              "./work/backenddb2").
--define(PATH3,              "./work/backenddb3").
+-define(PATH1, "./work/backenddb1").
+-define(PATH2, "./work/backenddb2").
+-define(PATH3, "./work/backenddb3").
 
 -define(TEST_BUCKET_BIN, list_to_binary("air")).
--define(TEST_KEY_BIN,    list_to_binary("air/on/g/string/music")).
--define(TEST_VAL_BIN,    term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
-
--define(TEST_KEY_BIN1,   list_to_binary("air/on/g/string/music/1")).
--define(TEST_VAL_BIN1,   term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
--define(TEST_KEY_BIN2,   list_to_binary("air/on/g/string/music/2")).
--define(TEST_VAL_BIN2,   term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
--define(TEST_KEY_BIN3,   list_to_binary("air/on/g/string/music/3")).
--define(TEST_VAL_BIN3,   term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
--define(TEST_KEY_BIN4,   list_to_binary("air/on/g/string/music/4")).
--define(TEST_VAL_BIN4,   term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
--define(TEST_KEY_BIN5,   list_to_binary("air/on/g/string/music/5")).
--define(TEST_VAL_BIN5,   term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
+-define(TEST_KEY_BIN, list_to_binary("air/on/g/string/music")).
+-define(TEST_VAL_BIN, term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
+-define(TEST_KEY_BIN1, list_to_binary("air/on/g/string/music/1")).
+-define(TEST_VAL_BIN1, term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
+-define(TEST_KEY_BIN2, list_to_binary("air/on/g/string/music/2")).
+-define(TEST_VAL_BIN2, term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
+-define(TEST_KEY_BIN3, list_to_binary("air/on/g/string/music/3")).
+-define(TEST_VAL_BIN3, term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
+-define(TEST_KEY_BIN4, list_to_binary("air/on/g/string/music/4")).
+-define(TEST_VAL_BIN4, term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
+-define(TEST_KEY_BIN5, list_to_binary("air/on/g/string/music/5")).
+-define(TEST_VAL_BIN5, term_to_binary([{genre, "Classical"},{composer, "J.S.Bach"}])).
 
 %%--------------------------------------------------------------------
 %% TEST FUNCTIONS

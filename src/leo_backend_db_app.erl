@@ -24,7 +24,6 @@
 %% @end
 %%======================================================================
 -module(leo_backend_db_app).
--author('Yosuke Hara').
 
 -behaviour(application).
 

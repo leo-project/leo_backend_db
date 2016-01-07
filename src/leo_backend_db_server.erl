@@ -25,7 +25,6 @@
 %% @end
 %%======================================================================
 -module(leo_backend_db_server).
--author('Yosuke Hara').
 
 -behaviour(gen_server).
 
@@ -193,9 +192,9 @@ get_db_raw_filepath(Id) ->
 %% @doc gen_server callback - Module:init(Args) -> Result
 init([Id, leo_backend_db_ets = DBModule, Table]) ->
     ok = DBModule:open(Table),
-    {ok, #state{id       = Id,
-                db       = DBModule,
-                handler  = list_to_atom(Table)}};
+    {ok, #state{id = Id,
+                db = DBModule,
+                handler = list_to_atom(Table)}};
 
 init([Id, DBModule, Path]) ->
     {ok, Curr} = file:get_cwd(),
@@ -210,11 +209,11 @@ init([Id, DBModule, Path]) ->
         {ok, RawPath} ->
             case DBModule:open(Path) of
                 {ok, Handler} ->
-                    {ok, #state{id       = Id,
-                                db       = DBModule,
-                                path     = Path1,
+                    {ok, #state{id = Id,
+                                db = DBModule,
+                                path = Path1,
                                 raw_path = RawPath,
-                                handler  = Handler}};
+                                handler = Handler}};
                 {error, Cause} ->
                     {stop, Cause}
             end;
@@ -237,25 +236,25 @@ handle_call(stop, _From, #state{id = Id,
 %%--------------------------------------------------------------------
 %% Data Operation related.
 %%--------------------------------------------------------------------
-handle_call({put, KeyBin, ValueBin}, _From, #state{db      = DBModule,
+handle_call({put, KeyBin, ValueBin}, _From, #state{db = DBModule,
                                                    handler = Handler} = State) ->
     Reply = erlang:apply(DBModule, put, [Handler, KeyBin, ValueBin]),
     {reply, Reply, State};
 
 
-handle_call({get, KeyBin}, _From, #state{db      = DBModule,
+handle_call({get, KeyBin}, _From, #state{db = DBModule,
                                          handler = Handler} = State) ->
     Reply = erlang:apply(DBModule, get, [Handler, KeyBin]),
     {reply, Reply, State};
 
 
-handle_call({delete, KeyBin}, _From, #state{db      = DBModule,
+handle_call({delete, KeyBin}, _From, #state{db = DBModule,
                                             handler = Handler} = State) ->
     Reply = erlang:apply(DBModule, delete, [Handler, KeyBin]),
     {reply, Reply, State};
 
 
-handle_call({fetch, KeyBin, Fun, MaxKeys}, _From, #state{db      = DBModule,
+handle_call({fetch, KeyBin, Fun, MaxKeys}, _From, #state{db = DBModule,
                                                          handler = Handler} = State) ->
     Reply = case catch erlang:apply(DBModule, prefix_search,
                                     [Handler, KeyBin, Fun, MaxKeys]) of
@@ -266,25 +265,25 @@ handle_call({fetch, KeyBin, Fun, MaxKeys}, _From, #state{db      = DBModule,
             end,
     {reply, Reply, State};
 
-handle_call(first, _From, #state{db      = DBModule,
+handle_call(first, _From, #state{db = DBModule,
                                  handler = Handler} = State) ->
     Reply = erlang:apply(DBModule, first, [Handler]),
     {reply, Reply, State};
 
 
-handle_call(status, _From, #state{db      = DBModule,
+handle_call(status, _From, #state{db = DBModule,
                                   handler = Handler} = State) ->
     Reply = erlang:apply(DBModule, status, [Handler]),
     {reply, Reply, State};
 
 
-handle_call(close, _From, #state{db      = DBModule,
+handle_call(close, _From, #state{db = DBModule,
                                  handler = Handler} = State) ->
     catch erlang:apply(DBModule, close, [Handler]),
     {reply, ok, State};
 
 
-handle_call(run_compaction, _From, #state{db   = DBModule,
+handle_call(run_compaction, _From, #state{db = DBModule,
                                           path = Path} = State) ->
     NewPath = gen_file_raw_path(Path),
     case filelib:ensure_dir(NewPath) of
@@ -292,8 +291,8 @@ handle_call(run_compaction, _From, #state{db   = DBModule,
             case DBModule:open(NewPath) of
                 {ok, NewHandler} ->
                     NewState = State#state{
-                                 tmp_raw_path     = NewPath,
-                                 tmp_handler      = NewHandler},
+                                 tmp_raw_path = NewPath,
+                                 tmp_handler = NewHandler},
                     {reply, ok, NewState};
                 {error, Reason} ->
                     {stop, Reason, State}
@@ -308,12 +307,12 @@ handle_call({put_value_to_new_db, KeyBin, ValueBin}, _From,
     Reply = erlang:apply(DBModule, put, [TmpHandler, KeyBin, ValueBin]),
     {reply, Reply, State};
 
-handle_call({finish_compaction, Commit}, _From, #state{db           = DBModule,
-                                                       path         = Path,
-                                                       raw_path     = RawPath,
-                                                       handler      = Handler,
+handle_call({finish_compaction, Commit}, _From, #state{db = DBModule,
+                                                       path = Path,
+                                                       raw_path = RawPath,
+                                                       handler = Handler,
                                                        tmp_raw_path = TmpPath,
-                                                       tmp_handler  = TmpHandler} = State) ->
+                                                       tmp_handler = TmpHandler} = State) ->
     _ = erlang:apply(DBModule, close, [TmpHandler]),
 
     case Commit of
@@ -360,8 +359,8 @@ handle_info(_Info, State) ->
 %% <p>
 %% gen_server callback - Module:terminate(Reason, State)
 %% </p>
-terminate(_Reason, #state{id      = Id,
-                          db      = DBModule,
+terminate(_Reason, #state{id = Id,
+                          db = DBModule,
                           handler = Handler}) ->
     error_logger:info_msg("~p,~p,~p,~p~n",
                           [{module, ?MODULE_STRING},

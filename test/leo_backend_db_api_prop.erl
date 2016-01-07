@@ -25,8 +25,6 @@
 %%====================================================================
 -module(leo_backend_db_api_prop).
 
--author('Yosuke Hara').
-
 -include_lib("proper/include/proper.hrl").
 -include_lib("eunit/include/eunit.hrl").
 

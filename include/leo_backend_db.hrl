@@ -24,7 +24,7 @@
 %%======================================================================
 
 -define(ETS_TABLE_NAME, 'leo_backend_db_pd').
--define(APP_NAME,       'leo_backend_db').
+-define(APP_NAME, 'leo_backend_db').
 
 -type(type_of_methods() :: put | get | delete | fetch).
--type(backend_db()      :: bitcask | leveldb | ets).
+-type(backend_db() :: bitcask | leveldb | ets).
