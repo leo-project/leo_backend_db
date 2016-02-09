@@ -28,10 +28,12 @@
 
 -behaviour(gen_server).
 
+-include("leo_backend_db.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
 -export([start_link/3,
+         start_link/4,
          stop/1]).
 
 %% data operations.
@@ -58,11 +60,15 @@
 
 -record(state, {id :: atom(),
                 db :: atom(),
-                path = []         :: string(),
-                raw_path = []     :: string(),
+                path = [] :: string(),
+                raw_path = [] :: string(),
                 tmp_raw_path = [] :: string(),
                 tmp_handler :: pid(),
-                handler     :: pid()}).
+                handler :: pid(),
+                state_path = [] :: string(),
+                count = 0 :: non_neg_integer(),
+                is_strict_check = false :: boolean()
+               }).
 
 -define(DEF_TIMEOUT, 30000).
 
@@ -75,7 +81,11 @@
                                                        DBModule::atom(),
                                                        Path::string()).
 start_link(Id, DBModule, Path) ->
-    gen_server:start_link({local, Id}, ?MODULE, [Id, DBModule, Path], []).
+    start_link(Id, DBModule, Path, false).
+
+start_link(Id, DBModule, Path, IsStrictCheck) ->
+    gen_server:start_link({local, Id}, ?MODULE,
+                          [Id, DBModule, Path, IsStrictCheck], []).
 
 %% @doc Close the process
 stop(Id) ->
@@ -190,30 +200,41 @@ get_db_raw_filepath(Id) ->
 %% GEN_SERVER CALLBACKS
 %%--------------------------------------------------------------------
 %% @doc gen_server callback - Module:init(Args) -> Result
-init([Id, leo_backend_db_ets = DBModule, Table]) ->
+init([Id, leo_backend_db_ets = DBModule, Table,_]) ->
     ok = DBModule:open(Table),
     {ok, #state{id = Id,
                 db = DBModule,
                 handler = list_to_atom(Table)}};
 
-init([Id, DBModule, Path]) ->
+init([Id, DBModule, Path, IsStrictCheck]) ->
     {ok, Curr} = file:get_cwd(),
-    Path1 = case Path of
-                "/"   ++ _Rest -> Path;
-                "../" ++ _Rest -> Path;
-                "./"  ++  Rest -> Curr ++ "/" ++ Rest;
-                _              -> Curr ++ "/" ++ Path
-            end,
+    Path_1 = case Path of
+                 "/"   ++ _Rest -> Path;
+                 "../" ++ _Rest -> Path;
+                 "./"  ++  Rest -> Curr ++ "/" ++ Rest;
+                 _              -> Curr ++ "/" ++ Path
+             end,
 
-    case get_raw_path(Path1) of
+    case get_raw_path(Path_1) of
         {ok, RawPath} ->
             case DBModule:open(Path) of
                 {ok, Handler} ->
+                    %% Retrieve total num of keys from the local state file
+                    StateFilePath = lists:append([Path_1, "_", atom_to_list(Id), ".state"]),
+                    Count = case file:consult(StateFilePath) of
+                                {ok, Props} ->
+                                    leo_misc:get_value('count', Props, 0);
+                                _ ->
+                                    0
+                            end,
                     {ok, #state{id = Id,
                                 db = DBModule,
-                                path = Path1,
+                                path = Path_1,
                                 raw_path = RawPath,
-                                handler = Handler}};
+                                handler = Handler,
+                                state_path = StateFilePath,
+                                count = Count,
+                                is_strict_check = IsStrictCheck}};
                 {error, Cause} ->
                     {stop, Cause}
             end;
@@ -237,9 +258,13 @@ handle_call(stop, _From, #state{id = Id,
 %% Data Operation related.
 %%--------------------------------------------------------------------
 handle_call({put, KeyBin, ValueBin}, _From, #state{db = DBModule,
-                                                   handler = Handler} = State) ->
+                                                   handler = Handler,
+                                                   count = Count,
+                                                   is_strict_check = IsStrictCheck} = State) ->
+    Count_1 = ?get_new_count(DBModule, Handler, 'put',
+                             KeyBin, Count, IsStrictCheck),
     Reply = erlang:apply(DBModule, put, [Handler, KeyBin, ValueBin]),
-    {reply, Reply, State};
+    {reply, Reply, State#state{count = Count_1}};
 
 
 handle_call({get, KeyBin}, _From, #state{db = DBModule,
@@ -249,9 +274,10 @@ handle_call({get, KeyBin}, _From, #state{db = DBModule,
 
 
 handle_call({delete, KeyBin}, _From, #state{db = DBModule,
-                                            handler = Handler} = State) ->
+                                            handler = Handler,
+                                            count = Count} = State) ->
     Reply = erlang:apply(DBModule, delete, [Handler, KeyBin]),
-    {reply, Reply, State};
+    {reply, Reply, State#state{count = Count + 1}};
 
 
 handle_call({fetch, KeyBin, Fun, MaxKeys}, _From, #state{db = DBModule,
@@ -272,14 +298,19 @@ handle_call(first, _From, #state{db = DBModule,
 
 
 handle_call(status, _From, #state{db = DBModule,
-                                  handler = Handler} = State) ->
+                                  handler = Handler} = State) when  DBModule == 'ets' ->
     Reply = erlang:apply(DBModule, status, [Handler]),
     {reply, Reply, State};
+handle_call(status, _From, #state{count = Count} = State) ->
+    {reply, [{key_count, Count}], State};
 
 
-handle_call(close, _From, #state{db = DBModule,
-                                 handler = Handler} = State) ->
-    catch erlang:apply(DBModule, close, [Handler]),
+handle_call(close, _From, #state{id = Id,
+                                 db = DBModule,
+                                 handler = Handler,
+                                 state_path = StateFilePath,
+                                 count = Count} = State) ->
+    ok = close_handler(Id, DBModule, Handler, StateFilePath, Count),
     {reply, ok, State};
 
 
@@ -302,10 +333,11 @@ handle_call(run_compaction, _From, #state{db = DBModule,
     end;
 
 handle_call({put_value_to_new_db, KeyBin, ValueBin}, _From,
-            #state{db          = DBModule,
-                   tmp_handler = TmpHandler} = State) ->
+            #state{db = DBModule,
+                   tmp_handler = TmpHandler,
+                   count = Count} = State) ->
     Reply = erlang:apply(DBModule, put, [TmpHandler, KeyBin, ValueBin]),
-    {reply, Reply, State};
+    {reply, Reply, State#state{count = Count + 1}};
 
 handle_call({finish_compaction, Commit}, _From, #state{db = DBModule,
                                                        path = Path,
@@ -361,12 +393,14 @@ handle_info(_Info, State) ->
 %% </p>
 terminate(_Reason, #state{id = Id,
                           db = DBModule,
-                          handler = Handler}) ->
+                          handler = Handler,
+                          state_path = StateFilePath,
+                          count = Count}) ->
     error_logger:info_msg("~p,~p,~p,~p~n",
                           [{module, ?MODULE_STRING},
                            {function, "terminate/2"},
                            {line, ?LINE}, {body, Id}]),
-    catch erlang:apply(DBModule, close, [Handler]),
+    ok = close_handler(Id, DBModule, Handler, StateFilePath, Count),
     ok.
 
 %% @doc Convert process state when code is changed
@@ -404,3 +438,12 @@ get_raw_path(SymLinkPath) ->
         Error ->
             Error
     end.
+
+
+%% @private
+close_handler(Id, DBModule, Handler, StateFilePath, Count) ->
+    catch leo_file:file_unconsult(StateFilePath, [{id, Id},
+                                                  {count, Count}
+                                                 ]),
+    catch erlang:apply(DBModule, close, [Handler]),
+    ok.
