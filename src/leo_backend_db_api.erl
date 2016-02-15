@@ -29,7 +29,8 @@
 -include("leo_backend_db.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([new/4, put/3, get/2, delete/2, fetch/3, fetch/4, first/1,
+-export([new/4, new/5,
+         put/3, get/2, delete/2, fetch/3, fetch/4, first/1,
          status/1,
          run_compaction/1, finish_compaction/2,
          put_value_to_new_db/3,
@@ -51,10 +52,20 @@
                                       BackendDB::backend_db(),
                                       DBRootPath::string()).
 new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
+    new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath, false).
+
+-spec(new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath, IsStrictCheck) ->
+             ok | {error, any()} when InstanceName::atom(),
+                                      NumOfDBProcs::pos_integer(),
+                                      BackendDB::backend_db(),
+                                      DBRootPath::string(),
+                                      IsStrictCheck::boolean()).
+new(InstanceName, NumOfDBProcs, BackendDB, DBRootPath, IsStrictCheck) ->
     case start_app() of
         ok ->
             leo_backend_db_sup:start_child(
-              InstanceName, NumOfDBProcs, BackendDB, DBRootPath);
+              leo_backend_db_sup, InstanceName, NumOfDBProcs,
+              BackendDB, DBRootPath, IsStrictCheck);
         {error, Cause} ->
             {error, Cause}
     end.

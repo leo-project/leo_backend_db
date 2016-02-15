@@ -34,7 +34,7 @@
 %% External API
 -export([start_link/0,
          stop/0,
-         start_child/4, start_child/5]).
+         start_child/5, start_child/6]).
 
 %% Callbacks
 -export([init/1]).
@@ -74,21 +74,23 @@ init([]) ->
 %%-----------------------------------------------------------------------
 %% @doc Creates the gen_server process as part of a supervision tree
 %% @end
--spec(start_child(atom(), pos_integer(), backend_db(), string()) ->
-             ok | no_return()).
-start_child(InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
-    start_child(?MODULE, InstanceName, NumOfDBProcs, BackendDB, DBRootPath).
-
 -spec(start_child(atom()|pid(), atom(), integer(), backend_db(), string()) ->
              ok | true).
 start_child(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
+    start_child(SupRef, InstanceName, NumOfDBProcs,
+                BackendDB, DBRootPath, false).
+
+-spec(start_child(atom()|pid(), atom(), integer(), backend_db(), string(), boolean()) ->
+             ok | true).
+start_child(SupRef, InstanceName, NumOfDBProcs,
+            BackendDB, DBRootPath, IsStrictCheck) ->
     ok = leo_misc:init_env(),
     catch ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
     start_child_1(SupRef, InstanceName, NumOfDBProcs - 1, (NumOfDBProcs == 1),
-                  BackendDB, DBRootPath, []).
+                  BackendDB, DBRootPath, IsStrictCheck, []).
 
 %% @private
-start_child_1(_, InstanceName, -1,_,_,_, Acc) ->
+start_child_1(_, InstanceName, -1,_,_,_,_,Acc) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
             true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Acc});
@@ -97,7 +99,8 @@ start_child_1(_, InstanceName, -1,_,_,_, Acc) ->
             true = ets:insert(?ETS_TABLE_NAME, {InstanceName, Acc})
     end,
     ok;
-start_child_1(SupRef, InstanceName, NumOfDBProcs, IsOneDevice, BackendDB, DBRootPath, Acc) ->
+start_child_1(SupRef, InstanceName, NumOfDBProcs,
+              IsOneDevice, BackendDB, DBRootPath, IsStrictCheck, Acc) ->
     BackendMod = backend_mod(BackendDB),
     {Id, StrDBNumber} =
         case IsOneDevice of
@@ -111,7 +114,7 @@ start_child_1(SupRef, InstanceName, NumOfDBProcs, IsOneDevice, BackendDB, DBRoot
         end,
 
     Path = DBRootPath ++ StrDBNumber,
-    Args = [Id, BackendMod, Path],
+    Args = [Id, BackendMod, Path, IsStrictCheck],
     ChildSpec = {Id,
                  {leo_backend_db_server, start_link, Args},
                  permanent, 2000, worker, [leo_backend_db_server]},
@@ -120,10 +123,10 @@ start_child_1(SupRef, InstanceName, NumOfDBProcs, IsOneDevice, BackendDB, DBRoot
         {ok, _Pid} when BackendDB == bitcask ->
             ok = bitcask:merge(Path),
             start_child_1(SupRef, InstanceName, NumOfDBProcs - 1,
-                          IsOneDevice, BackendDB, DBRootPath, [Id|Acc]);
+                          IsOneDevice, BackendDB, DBRootPath, IsStrictCheck, [Id|Acc]);
         {ok, _Pid} ->
             start_child_1(SupRef, InstanceName, NumOfDBProcs - 1,
-                          IsOneDevice, BackendDB, DBRootPath, [Id|Acc]);
+                          IsOneDevice, BackendDB, DBRootPath, IsStrictCheck, [Id|Acc]);
         Cause ->
             io:format("~w:~w - ~w ~p~n", [?MODULE, ?LINE, Id, Cause]),
             case ?MODULE:stop() of

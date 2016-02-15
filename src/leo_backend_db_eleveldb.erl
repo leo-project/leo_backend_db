@@ -26,7 +26,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([open/1, open/2, close/1, status/1]).
+-export([open/1, open/2, close/1]).
 -export([get/2, put/3, delete/2, prefix_search/4, first/1]).
 
 -define(DEF_MAX_OPEN_FILES, 32).
@@ -79,13 +79,6 @@ open(Path, Config) ->
 open_1(Path, Options) ->
     case catch eleveldb:open(Path, Options) of
         {ok, Handler} ->
-            CurCount = eleveldb:fold_keys(Handler, fun(_K, Acc) ->
-                                                           Acc + 1
-                                                   end, 0, []),
-            catch ets:new(?ETS_TBL_LEVELDB,
-                          [named_table, public, {write_concurrency, true}]),
-            true = ets:insert(?ETS_TBL_LEVELDB,
-                              {{?ETS_COL_LEVELDB_KEY_CNT,self()}, CurCount}),
             {ok, Handler};
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
@@ -109,18 +102,6 @@ open_1(Path, Options) ->
 close(Handler) ->
     catch eleveldb:close(Handler),
     ok.
-
-
-%% @doc Get the status information for this eleveldb backend
--spec(status(Handler) ->
-             [{atom(), term()}] when Handler::eleveldb:db_ref()).
-status(_Handler) ->
-    case ets:lookup(?ETS_TBL_LEVELDB, {?ETS_COL_LEVELDB_KEY_CNT, self()}) of
-        [{{key_count,_Pid},Count}|_] ->
-            [{key_count, Count}];
-        _ ->
-            [{key_count, 0}]
-    end.
 
 
 %% @doc Retrieve an object from the eleveldb.
@@ -160,8 +141,6 @@ get(Handler, Key) ->
 put(Handler, Key, Value) ->
     case catch eleveldb:put(Handler, Key, Value, []) of
         ok ->
-            catch ets:update_counter(
-                    ?ETS_TBL_LEVELDB, {?ETS_COL_LEVELDB_KEY_CNT, self()}, 1),
             ok;
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
@@ -188,9 +167,6 @@ delete(Handler, Key) ->
         {ok,_} ->
             case catch eleveldb:delete(Handler, Key, []) of
                 ok ->
-                    catch ets:update_counter(
-                            ?ETS_TBL_LEVELDB,
-                            {?ETS_COL_LEVELDB_KEY_CNT, self()}, -1),
                     ok;
                 {'EXIT', Cause} ->
                     error_logger:error_msg("~p,~p,~p,~p~n",

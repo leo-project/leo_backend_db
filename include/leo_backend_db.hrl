@@ -28,3 +28,31 @@
 
 -type(type_of_methods() :: put | get | delete | fetch).
 -type(backend_db() :: bitcask | leveldb | ets).
+
+
+-define(get_new_count(_DBMod,_Handler,_Method,_Key,_Cnt,_IsStrictCheck),
+        case _DBMod of
+            'ets' ->
+                _Cnt;
+            _ when _IsStrictCheck == true ->
+                case erlang:apply(_DBMod, get, [_Handler,_Key]) of
+                    not_found ->
+                        case _Method of
+                            'put' ->
+                                _Cnt + 1;
+                            _ ->
+                                _Cnt
+                        end;
+                    {ok,_} ->
+                        case _Method of
+                            'put' ->
+                                _Cnt;
+                            _ ->
+                                _Cnt - 1
+                        end;
+                    _ ->
+                        _Cnt
+                end;
+            _ ->
+                _Cnt + 1
+        end).

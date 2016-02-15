@@ -29,7 +29,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("bitcask/include/bitcask.hrl").
 
--export([open/1, open/2, close/1, status/1]).
+-export([open/1, open/2, close/1]).
 -export([get/2, put/3, delete/2, prefix_search/4, first/1]).
 
 %% @doc Open a new or existing bitcask datastore for read-only access
@@ -69,14 +69,6 @@ open(Path, Options) ->
              ok when Handler::reference()).
 close(Handler) ->
     bitcask:close(Handler).
-
-
-%% @doc Retrive the status information for this bitcask backend
--spec(status(Handler) ->
-                    [{atom(), term()}] when Handler::reference()).
-status(Handler) ->
-    {KeyCount, Status} = bitcask:status(Handler),
-    [{key_count, KeyCount}, {status, Status}].
 
 
 %% @doc Retrieve an object from bitcask.

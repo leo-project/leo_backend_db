@@ -93,7 +93,7 @@ all_ets_(_) ->
     ok.
 
 inspect(Instance, BackendDb, Path) ->
-    ok = leo_backend_db_api:new(Instance, ?NUM_OF_PROCS, BackendDb, Path),
+    ok = leo_backend_db_api:new(Instance, ?NUM_OF_PROCS, BackendDb, Path, true),
     true  = leo_backend_db_api:has_instance(Instance),
     false = leo_backend_db_api:has_instance('not_exist_instance'),
 
@@ -129,7 +129,11 @@ inspect(Instance, BackendDb, Path) ->
                         {?TEST_KEY_BIN2, ?TEST_VAL_BIN2},
                         {?TEST_KEY_BIN3, ?TEST_VAL_BIN3},
                         {?TEST_KEY_BIN4, ?TEST_VAL_BIN4},
-                        {?TEST_KEY_BIN5, ?TEST_VAL_BIN5}
+                        {?TEST_KEY_BIN5, ?TEST_VAL_BIN5},
+                        %% duplicated keys
+                        {?TEST_KEY_BIN1, ?TEST_VAL_BIN1},
+                        {?TEST_KEY_BIN2, ?TEST_VAL_BIN2},
+                        {?TEST_KEY_BIN3, ?TEST_VAL_BIN3}
                        ]),
 
     lists:foreach(fun(K) ->
@@ -140,6 +144,7 @@ inspect(Instance, BackendDb, Path) ->
 
     {ok, {_, _}} = leo_backend_db_api:first(Instance),
     Res4 = leo_backend_db_api:status(Instance),
+    ?debugVal(Res4),
     ?assertEqual(?NUM_OF_PROCS, length(Res4)),
 
     {ok, Res5} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun_1),
