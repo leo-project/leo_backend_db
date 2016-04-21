@@ -277,7 +277,13 @@ handle_call({delete, KeyBin}, _From, #state{db = DBModule,
                                             handler = Handler,
                                             count = Count} = State) ->
     Reply = erlang:apply(DBModule, delete, [Handler, KeyBin]),
-    {reply, Reply, State#state{count = Count + 1}};
+    Count_1 = case (Count > 0) of
+                  true ->
+                      Count - 1;
+                  false ->
+                      0
+              end,
+    {reply, Reply, State#state{count = Count_1}};
 
 
 handle_call({fetch, KeyBin, Fun, MaxKeys}, _From, #state{db = DBModule,
