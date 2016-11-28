@@ -175,7 +175,7 @@ run_compaction(Id) ->
              ok | {error, any()} when Id::atom(),
                                       Commit::boolean()).
 finish_compaction(Id, Commit) ->
-    gen_server:call(Id, {finish_compaction, Commit}, ?DEF_TIMEOUT).
+    gen_server:call(Id, {finish_compaction, Commit}, infinity).
 
 
 %% @doc Direct to put a record to a temporary new data file.
