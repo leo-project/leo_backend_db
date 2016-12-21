@@ -29,6 +29,36 @@
 -type(type_of_methods() :: put | get | delete | fetch).
 -type(backend_db() :: bitcask | leveldb | ets).
 
+-define(DEF_ELEVELDB_WRITE_BUF_SIZE, 62914560).
+-define(DEF_ELEVELDB_MAX_OPEN_FILES, 1000).
+-define(DEF_ELEVELDB_SST_BLOCK_SIZE, 4096).
+
+-define(env_eleveldb_write_buf_size(),
+        case application:get_env(?APP_NAME,
+                                 eleveldb_write_buf_size) of
+            {ok, WriteBufferSize} when is_integer(WriteBufferSize) ->
+                WriteBufferSize;
+            _ ->
+                ?DEF_ELEVELDB_WRITE_BUF_SIZE
+        end).
+
+-define(env_eleveldb_max_open_files(),
+        case application:get_env(?APP_NAME,
+                                 eleveldb_max_open_files) of
+            {ok, MaxOpenFiles} when is_integer(MaxOpenFiles) ->
+                MaxOpenFiles;
+            _ ->
+                ?DEF_ELEVELDB_MAX_OPEN_FILES
+        end).
+
+-define(env_eleveldb_sst_block_size(),
+        case application:get_env(?APP_NAME,
+                                 eleveldb_sst_block_size) of
+            {ok, SSTBlockSize} when is_integer(SSTBlockSize) ->
+                SSTBlockSize;
+            _ ->
+                ?DEF_ELEVELDB_SST_BLOCK_SIZE
+        end).
 
 -define(get_new_count(_DBMod,_Handler,_Method,_Key,_Cnt,_IsStrictCheck),
         case _DBMod of
