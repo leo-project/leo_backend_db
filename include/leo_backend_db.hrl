@@ -2,7 +2,7 @@
 %%
 %% Leo Backend-DB
 %%
-%% Copyright (c) 2012-2014
+%% Copyright (c) 2012-2017 Rakuten, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
