@@ -51,7 +51,7 @@ open(Path) ->
              {error, any()} | {ok, pid()} when Path::string(),
                                                Config::[tuple()]).
 open(Path, Config) ->
-    WriteBufferSize = leo_misc:get_value(write_buffer_size, Config, ?DEF_ELEVELDB_MAX_OPEN_FILES),
+    WriteBufferSize = leo_misc:get_value(write_buffer_size, Config, ?DEF_ELEVELDB_WRITE_BUF_SIZE),
     MaxOpenFiles = leo_misc:get_value(max_open_files, Config, ?DEF_ELEVELDB_MAX_OPEN_FILES),
     BlockSize = leo_misc:get_value(block_size, Config, ?DEF_ELEVELDB_SST_BLOCK_SIZE),
     Options = [{create_if_missing, true},
