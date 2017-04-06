@@ -174,6 +174,15 @@ inspect(Instance, BackendDb, Path) ->
         _ ->
             void
     end,
+
+    %% %4 status_compaction
+    [SCH|_] = leo_backend_db_api:status_compaction(Instance),
+    case BackendDb of
+        ?BACKEND_DB_LEVELDB ->
+            ?assertEqual(true, is_binary(SCH));
+        _ ->
+            ?assertEqual({error, unsupported}, SCH)
+    end,
     ok.
 
 

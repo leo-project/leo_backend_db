@@ -44,7 +44,7 @@
          first/1,
          status/1,
          close/1,
-         run_compaction/1, finish_compaction/2,
+         run_compaction/1, finish_compaction/2, status_compaction/1,
          put_value_to_new_db/3,
          get_db_raw_filepath/1
         ]).
@@ -152,6 +152,12 @@ first(Id) ->
 status(Id) ->
     gen_server:call(Id, status, ?DEF_TIMEOUT).
 
+%% @doc Retrieve the current compaction status from the database
+%%
+-spec(status_compaction(Id) ->
+             any() | {error, any()} when Id::atom()).
+status_compaction(Id) ->
+    gen_server:call(Id, status_compaction, ?DEF_TIMEOUT).
 
 %% @doc Close the database
 %%
@@ -310,6 +316,12 @@ handle_call(status, _From, #state{db = DBModule,
 handle_call(status, _From, #state{count = Count} = State) ->
     {reply, [{key_count, Count}], State};
 
+handle_call(status_compaction, _From, #state{db = DBModule,
+                                  handler = Handler} = State) when DBModule == 'leo_backend_db_eleveldb' ->
+    Reply = erlang:apply(DBModule, status_compaction, [Handler]),
+    {reply, Reply, State};
+handle_call(status_compaction, _From, State) ->
+    {reply, {error, unsupported}, State};
 
 handle_call(close, _From, #state{id = Id,
                                  db = DBModule,

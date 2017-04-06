@@ -32,7 +32,7 @@
 -export([new/4, new/5,
          put/3, get/2, delete/2, fetch/3, fetch/4, first/1,
          status/1,
-         run_compaction/1, finish_compaction/2,
+         run_compaction/1, finish_compaction/2, status_compaction/1,
          put_value_to_new_db/3,
          get_db_raw_filepath/1,
          has_instance/1,
@@ -210,6 +210,20 @@ status(InstanceName) ->
                         end, [], List)
     end.
 
+%% @doc Retrieve compaction status from backend-db.
+%%
+-spec(status_compaction(InstanceName) ->
+             [{atom(), term()}] when InstanceName::atom()).
+status_compaction(InstanceName) ->
+    case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
+        [] ->
+            not_found;
+        [{InstanceName, List}] ->
+            lists:foldl(fun(Id, Acc) ->
+                                Res = ?SERVER_MODULE:status_compaction(Id),
+                                [Res|Acc]
+                        end, [], List)
+    end.
 
 %% @doc Start the data-compaction
 -spec(run_compaction(InstanceName) ->

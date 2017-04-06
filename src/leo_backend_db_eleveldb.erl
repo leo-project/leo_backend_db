@@ -29,6 +29,7 @@
 
 -export([open/1, open/2, close/1]).
 -export([get/2, put/3, delete/2, prefix_search/4, first/1]).
+-export([status_compaction/1]).
 
 -define(ETS_TBL_LEVELDB, 'leo_eleveldb').
 -define(ETS_COL_LEVELDB_KEY_CNT, 'key_count').
@@ -100,6 +101,13 @@ close(Handler) ->
     catch eleveldb:close(Handler),
     ok.
 
+%% @doc Retrieve the compaction status
+%%
+-spec(status_compaction(Handler) ->
+             binary() when Handler::eleveldb:db_ref()).
+status_compaction(Handler) ->
+    {ok, Ret} = eleveldb:status(Handler, <<"leveldb.stats">>),
+    Ret.
 
 %% @doc Retrieve an object from the eleveldb.
 %%
