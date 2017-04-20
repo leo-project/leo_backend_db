@@ -203,12 +203,16 @@ delete(Handler, Key) ->
 prefix_search(Handler, Key, Fun, MaxKeys) ->
     try
         {ok, Itr} = eleveldb:iterator(Handler, []),
-        Ret = eleveldb:iterator_move(Itr, Key),
-        case fold_loop(Ret, Itr, Fun, [], Key, MaxKeys) of
-            [] ->
-                not_found;
-            Acc ->
-                {ok, lists:sort(Acc)}
+        try
+            Ret = eleveldb:iterator_move(Itr, Key),
+            case fold_loop(Ret, Itr, Fun, [], Key, MaxKeys) of
+                [] ->
+                    not_found;
+                Acc ->
+                    {ok, lists:sort(Acc)}
+            end
+        after
+            catch eleveldb:iterator_close(Itr)
         end
     catch
         _:Cause ->
@@ -227,13 +231,17 @@ prefix_search(Handler, Key, Fun, MaxKeys) ->
 first(Handler) ->
     case catch eleveldb:iterator(Handler, []) of
         {ok, Itr} ->
-            case eleveldb:iterator_move(Itr, first)  of
-                {ok, K} ->
-                    {ok, K};
-                {ok, K, V} ->
-                    {ok, K, V};
-                {error, invalid_iterator} ->
-                    not_found
+            try
+                case eleveldb:iterator_move(Itr, first)  of
+                    {ok, K} ->
+                        {ok, K};
+                    {ok, K, V} ->
+                        {ok, K, V};
+                    {error, invalid_iterator} ->
+                        not_found
+                end
+            after
+                catch eleveldb:iterator_close(Itr)
             end;
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
