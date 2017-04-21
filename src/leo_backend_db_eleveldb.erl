@@ -28,7 +28,7 @@
 -include("leo_backend_db.hrl").
 
 -export([open/1, open/2, close/1]).
--export([get/2, put/3, delete/2, prefix_search/4, first/1]).
+-export([get/2, put/3, delete/2, prefix_search/4, first/1, first_n/2]).
 -export([status_compaction/1]).
 
 -define(ETS_TBL_LEVELDB, 'leo_eleveldb').
@@ -257,6 +257,36 @@ first(Handler) ->
             {error, Cause}
     end.
 
+%% @doc Fetch first N records from eleveldb.
+%%
+-spec(first_n(Handler, N) ->
+             {ok, [_]} | not_found | {error, any()} when Handler::eleveldb:db_ref(),
+                                                         N::pos_integer()).
+first_n(Handler, N) ->
+    %% Filter Function to fetch the first N records
+    Fun = fun({K, V}, Acc0) ->
+                  Acc = [{K, V}|Acc0],
+                  Done = length(Acc) == N,
+                  {Done, Acc}
+          end,
+    case catch fold(Handler, Fun, [], []) of
+        {ok, []} ->
+            not_found;
+        {ok, List} ->
+            {ok, lists:reverse(List)};
+        {'EXIT', Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING},
+                                    {function, "first_n/2"},
+                                    {line, ?LINE}, {body, Cause}]),
+            {error, Cause};
+        {error, Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING},
+                                    {function, "first_n/2"},
+                                    {line, ?LINE}, {body, Cause}]),
+            {error, Cause}
+    end.
 
 %%--------------------------------------------------------------------
 %% INNER FUNCTIONS
@@ -301,4 +331,40 @@ fold_loop_1(K, V, Itr, Fun, Acc, Prefix, MaxKeys,_KeySize, PrefixSize) ->
             fold_loop(Ret, Itr, Fun, Acc_1, Prefix, MaxKeys);
         _ ->
             Acc
+    end.
+
+
+%% @private
+-type fold_fun() :: fun(({Key::binary(), Value::binary()}, any()) -> {Done::boolean(), any()}).
+
+%% Fold over the keys and values in the database
+%% until Fun(fold_fun) return {true, _} or the iterator reach EOF.
+%% will throw an exception if the database is closed while the fold runs
+-spec fold(eleveldb:db_ref(), fold_fun(), any(), eleveldb:fold_options()) -> {ok, any()}.
+fold(Ref, Fun, Acc0, Opts) ->
+    {ok, Itr} = eleveldb:iterator(Ref, Opts),
+    do_fold(Itr, Fun, Acc0, Opts).
+
+%% @private
+do_fold(Itr, Fun, Acc0, Opts) ->
+    try
+        Start = proplists:get_value(first_key, Opts, first),
+        true = is_binary(Start) or (Start == first),
+        fold_loop(eleveldb:iterator_move(Itr, Start), Itr, Fun, Acc0)
+    after
+        catch eleveldb:iterator_close(Itr)
+    end.
+
+%% @private
+fold_loop({error, iterator_closed}, _Itr, _Fun, Acc0) ->
+    throw({iterator_closed, Acc0});
+fold_loop({error, invalid_iterator}, _Itr, _Fun, Acc0) ->
+    {ok, Acc0};
+fold_loop({ok, K, V}, Itr, Fun, Acc0) ->
+    {Done, Acc} = Fun({K, V}, Acc0),
+    case Done of
+        true ->
+            {ok, Acc};
+        false ->
+            fold_loop(eleveldb:iterator_move(Itr, prefetch), Itr, Fun, Acc)
     end.

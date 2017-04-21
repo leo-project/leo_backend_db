@@ -97,6 +97,14 @@ inspect(Instance, BackendDb, Path) ->
     true  = leo_backend_db_api:has_instance(Instance),
     false = leo_backend_db_api:has_instance('not_exist_instance'),
 
+    %% first_n
+    case Instance of
+        test_leveldb ->
+            not_found = leo_backend_db_api:first_n(Instance, 10);
+        _ ->
+            void
+    end,
+
     %% #1
     ok = leo_backend_db_api:put(Instance, ?TEST_KEY_BIN, ?TEST_VAL_BIN),
     {ok, Res0} = leo_backend_db_api:get(Instance, ?TEST_KEY_BIN),
@@ -153,6 +161,22 @@ inspect(Instance, BackendDb, Path) ->
     {ok, Res6} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun_1, 3),
     ?assertEqual(3, length(Res6)),
 
+    %% first_n
+    case Instance of
+        test_leveldb ->
+            {ok, Res7} = leo_backend_db_api:first_n(Instance, 1),
+            ?debugVal(Res7),
+            ?assertEqual(1, length(Res7)),
+            {ok, Res8} = leo_backend_db_api:first_n(Instance, 3),
+            ?debugVal(Res8),
+            ?assertEqual(3, length(Res8)),
+            {ok, Res9} = leo_backend_db_api:first_n(Instance, 100),
+            ?debugVal(Res9),
+            ?assertEqual(5, length(Res9));
+        _ ->
+            void
+    end,
+
     case Instance of
         test_leveldb ->
             lists:foreach(fun({K,V}) ->
@@ -168,8 +192,8 @@ inspect(Instance, BackendDb, Path) ->
                             ?debugVal({leveldb, K, V, Acc}),
                             [{K,V} | Acc]
                     end,
-            {ok, Res7} = leo_backend_db_api:fetch(Instance, <<131,104>>, Fun_2),
-            ?assertEqual(5, length(Res7)),
+            {ok, Res10} = leo_backend_db_api:fetch(Instance, <<131,104>>, Fun_2),
+            ?assertEqual(5, length(Res10)),
             ok;
         _ ->
             void

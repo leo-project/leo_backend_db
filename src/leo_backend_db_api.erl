@@ -30,7 +30,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([new/4, new/5,
-         put/3, get/2, delete/2, fetch/3, fetch/4, first/1,
+         put/3, get/2, delete/2, fetch/3, fetch/4, first/1, first_n/2,
          status/1,
          run_compaction/1, finish_compaction/2, status_compaction/1,
          put_value_to_new_db/3,
@@ -167,6 +167,37 @@ fetch([]) ->
 fetch(Res) ->
     {ok, Res}.
 
+%% @doc Fetch first N records from backend-db.
+%%
+-spec(first_n(InstanceName, N) ->
+             {ok, list()} |
+             not_found |
+             {error, any()} when InstanceName::atom(),
+                                 N::pos_integer()).
+first_n(InstanceName, N) ->
+    case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
+        [] ->
+            not_found;
+        [{InstanceName, List}] ->
+            case catch lists:foldl(
+                         fun(Id, Acc) ->
+                                 case ?SERVER_MODULE:first_n(Id, N) of
+                                     {ok, Ret} ->
+                                         [Acc|Ret];
+                                     not_found ->
+                                         Acc;
+                                     {error, Cause} ->
+                                         erlang:error(Cause)
+                                 end
+                         end, [], List) of
+                {'EXIT', Cause} ->
+                    {error, Cause};
+                RetL ->
+                    fetch(lists:sublist(
+                            lists:reverse(
+                              lists:flatten(RetL)), N))
+            end
+    end.
 
 %% @doc Retrieve a first record from backend-db.
 %%
