@@ -45,6 +45,7 @@
          first_n/2,
          status/1,
          close/1,
+         count/1,
          run_compaction/1, finish_compaction/2, status_compaction/1,
          put_value_to_new_db/3,
          get_db_raw_filepath/1
@@ -176,6 +177,13 @@ status_compaction(Id) ->
 close(Id) ->
     gen_server:call(Id, close, ?DEF_TIMEOUT).
 
+%% @doc Count the number of records in database
+%%
+-spec(count(Id) ->
+             ok when Id::atom()).
+count(Id) ->
+    gen_server:call(Id, count, ?DEF_TIMEOUT).
+
 
 %% @doc Direct to start a compaction.
 %%
@@ -239,7 +247,11 @@ init([Id, DBModule, Path, IsStrictCheck]) ->
                     StateFilePath = lists:append([Path_1, "_", atom_to_list(Id), ".state"]),
                     Count = case file:consult(StateFilePath) of
                                 {ok, Props} ->
+                                    file:delete(StateFilePath),
                                     leo_misc:get_value('count', Props, 0);
+                                _ when DBModule == 'leo_backend_db_eleveldb' ->
+                                    {ok, Count0} = DBModule:count(Handler),
+                                    Count0;
                                 _ ->
                                     0
                             end,
@@ -353,6 +365,12 @@ handle_call(close, _From, #state{id = Id,
     ok = close_handler(Id, DBModule, Handler, StateFilePath, Count),
     {reply, ok, State};
 
+handle_call(count, _From, #state{db = DBModule,
+                                 handler = Handler} = State) when DBModule == 'leo_backend_db_eleveldb' ->
+    Reply = erlang:apply(DBModule, count, [Handler]),
+    {reply, Reply, State};
+handle_call(count, _From, State) ->
+    {reply, {error, unsupported}, State};
 
 handle_call(run_compaction, _From, #state{db = DBModule,
                                           path = Path} = State) ->

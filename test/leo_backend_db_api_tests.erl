@@ -30,6 +30,7 @@
 -define(TEST_INSTANCE_NAME1, 'test_bitcask').
 -define(TEST_INSTANCE_NAME2, 'test_leveldb').
 -define(TEST_INSTANCE_NAME3, 'test_ets').
+-define(TEST_INSTANCE_NAME4, 'test_leveldb_count').
 -define(NUM_OF_PROCS,       8).
 
 -define(BACKEND_DB_BITCASK, 'bitcask').
@@ -39,6 +40,7 @@
 -define(PATH1, "./work/backenddb1").
 -define(PATH2, "./work/backenddb2").
 -define(PATH3, "./work/backenddb3").
+-define(PATH4, "./work/backenddb4").
 
 -define(TEST_BUCKET_BIN, list_to_binary("air")).
 -define(TEST_KEY_BIN, list_to_binary("air/on/g/string/music")).
@@ -65,6 +67,7 @@ backend_db_test_() ->
                            fun all_eleveldb_/1,
                            fun all_ets_/1,
                            fun first_/1,
+                           fun count_/1,
                            fun compact_/1
                           ]]}.
 
@@ -161,7 +164,7 @@ inspect(Instance, BackendDb, Path) ->
     {ok, Res6} = leo_backend_db_api:fetch(Instance, ?TEST_KEY_BIN, Fun_1, 3),
     ?assertEqual(3, length(Res6)),
 
-    %% first_n
+    %% first_n and count
     case Instance of
         test_leveldb ->
             {ok, Res7} = leo_backend_db_api:first_n(Instance, 1),
@@ -172,7 +175,11 @@ inspect(Instance, BackendDb, Path) ->
             ?assertEqual(3, length(Res8)),
             {ok, Res9} = leo_backend_db_api:first_n(Instance, 100),
             ?debugVal(Res9),
-            ?assertEqual(5, length(Res9));
+            ?assertEqual(5, length(Res9)),
+            %% count
+            Count = leo_backend_db_api:count(Instance),
+            ?debugVal(Count),
+            ?assertEqual(5, Count);
         _ ->
             void
     end,
@@ -245,6 +252,37 @@ first_(_) ->
     TestData = [leo_backend_db_api:put(Id, <<Key/binary, Idx>>, Val) || Idx <- lists:seq($a, $z)],
     DelCount = delete_all(Id),
     ?assertEqual(DelCount, length(TestData)),
+    ok.
+
+count_(_) ->
+    Id = ?TEST_INSTANCE_NAME4,
+    Path = ?PATH4,
+    Key = <<"key">>,
+    Val = <<"val">>,
+
+    ok = leo_backend_db_api:new(Id, 1, ?BACKEND_DB_LEVELDB, Path),
+    _TestData = [leo_backend_db_api:put(Id, <<Key/binary, Idx>>, Val) || Idx <- lists:seq($a, $z)],
+    %% restart and confirm the number of items through count/1
+    Ret1 = supervisor:terminate_child(leo_backend_db_sup, Id),
+    ?debugVal(Ret1),
+    Ret2 = supervisor:delete_child(leo_backend_db_sup, Id),
+    ?debugVal(Ret2),
+    %% delete StateFile
+    {ok, Curr} = file:get_cwd(),
+    Path_1 = case Path of
+        "/"   ++ _Rest -> Path;
+        "../" ++ _Rest -> Path;
+        "./"  ++  Rest -> Curr ++ "/" ++ Rest;
+        _              -> Curr ++ "/" ++ Path
+    end,
+    StateFilePath = lists:append([Path_1, "_", atom_to_list(Id), ".state"]),
+    ?debugVal(StateFilePath),
+    file:delete(StateFilePath),
+    timer:sleep(300),
+    ok = leo_backend_db_api:new(Id, 1, ?BACKEND_DB_LEVELDB, Path),
+    Count = leo_backend_db_api:count(Id),
+    ?debugVal(Count),
+    ?assertEqual(26, Count),
     ok.
 
 delete_all(Id) ->

@@ -32,6 +32,7 @@
 -export([new/4, new/5,
          put/3, get/2, delete/2, fetch/3, fetch/4, first/1, first_n/2,
          status/1,
+         count/1,
          run_compaction/1, finish_compaction/2, status_compaction/1,
          put_value_to_new_db/3,
          get_db_raw_filepath/1,
@@ -239,6 +240,22 @@ status(InstanceName) ->
                                 Res = ?SERVER_MODULE:status(Id),
                                 [Res|Acc]
                         end, [], List)
+    end.
+
+%% @doc Count the number of records from backend-db.
+%%
+-spec(count(InstanceName) ->
+             Count when Count::non_neg_integer(),
+                              InstanceName::atom()).
+count(InstanceName) ->
+    case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
+        [] ->
+            0;
+        [{InstanceName, List}] ->
+            lists:foldl(fun(Id, Acc) ->
+                                {ok, Count} = ?SERVER_MODULE:count(Id),
+                                Acc + Count
+                        end, 0, List)
     end.
 
 %% @doc Retrieve compaction status from backend-db.

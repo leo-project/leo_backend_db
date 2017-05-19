@@ -29,6 +29,7 @@
 
 -export([open/1, open/2, close/1]).
 -export([get/2, put/3, delete/2, prefix_search/4, first/1, first_n/2]).
+-export([count/1]).
 -export([status_compaction/1]).
 
 -define(ETS_TBL_LEVELDB, 'leo_eleveldb').
@@ -284,6 +285,33 @@ first_n(Handler, N) ->
             error_logger:error_msg("~p,~p,~p,~p~n",
                                    [{module, ?MODULE_STRING},
                                     {function, "first_n/2"},
+                                    {line, ?LINE}, {body, Cause}]),
+            {error, Cause}
+    end.
+
+%% @doc Count the number of records from eleveldb.
+%%
+-spec(count(Handler) ->
+             {ok, Count} | {error, any()} when Handler::eleveldb:db_ref(),
+                                               Count::non_neg_integer()).
+count(Handler) ->
+    %% Function to count the number of records
+    Fun = fun({_K, _V}, Acc) ->
+                  {false, Acc + 1}
+          end,
+    case catch fold(Handler, Fun, 0, []) of
+        {ok, Count} ->
+            {ok, Count};
+        {'EXIT', Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING},
+                                    {function, "count/1"},
+                                    {line, ?LINE}, {body, Cause}]),
+            {error, Cause};
+        {error, Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING},
+                                    {function, "count/1"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
