@@ -23,7 +23,7 @@
 {application, leo_backend_db,
  [
   {description, "Leo Backend db"},
-  {vsn, "1.2.12"},
+  {vsn, "1.2.13"},
   {id, "leo_backend_db"},
   {registered,   []},
   {applications, [kernel, stdlib]},
