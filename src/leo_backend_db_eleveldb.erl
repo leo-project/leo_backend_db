@@ -28,7 +28,7 @@
 -include("leo_backend_db.hrl").
 
 -export([open/1, open/2, close/1]).
--export([get/2, put/3, delete/2, prefix_search/4, first/1, first_n/2]).
+-export([get/2, put/3, delete/2, prefix_search/4, first/1, first_n/3]).
 -export([count/1]).
 -export([status_compaction/1]).
 
@@ -260,16 +260,23 @@ first(Handler) ->
 
 %% @doc Fetch first N records from eleveldb.
 %%
--spec(first_n(Handler, N) ->
+-spec(first_n(Handler, N, Condition) ->
              {ok, [_]} | not_found | {error, any()} when Handler::eleveldb:db_ref(),
-                                                         N::pos_integer()).
-first_n(Handler, N) ->
+                                                         N::pos_integer(),
+                                                         Condition::function()).
+first_n(Handler, N, Condition) ->
     %% Filter Function to fetch the first N records
     Fun = fun({K, V}, Acc0) ->
-                  Acc = [{K, V}|Acc0],
-                  Done = length(Acc) == N,
+                  Acc = case Condition(K, V) of
+                            true ->
+                                [{K, V}|Acc0];
+                            false ->
+                                Acc0
+                        end,
+                  Done = (length(Acc) == N),
                   {Done, Acc}
           end,
+
     case catch fold(Handler, Fun, [], []) of
         {ok, []} ->
             not_found;

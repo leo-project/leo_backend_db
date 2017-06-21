@@ -30,7 +30,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([new/4, new/5,
-         put/3, get/2, delete/2, fetch/3, fetch/4, first/1, first_n/2,
+         put/3, get/2, delete/2, fetch/3, fetch/4,
+         first/1, first_n/2, first_n/3,
          status/1,
          count/1,
          run_compaction/1, finish_compaction/2, status_compaction/1,
@@ -176,13 +177,25 @@ fetch(Res) ->
              {error, any()} when InstanceName::atom(),
                                  N::pos_integer()).
 first_n(InstanceName, N) ->
+    Condition = fun(_K,_V) ->
+                        true
+                end,
+    first_n(InstanceName, N, Condition).
+
+-spec(first_n(InstanceName, N, Condition) ->
+             {ok, list()} |
+             not_found |
+             {error, any()} when InstanceName::atom(),
+                                 N::pos_integer(),
+                                 Condition::function()).
+first_n(InstanceName, N, Condition) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
             not_found;
         [{InstanceName, List}] ->
             case catch lists:foldl(
                          fun(Id, Acc) ->
-                                 case ?SERVER_MODULE:first_n(Id, N) of
+                                 case ?SERVER_MODULE:first_n(Id, N, Condition) of
                                      {ok, Ret} ->
                                          [Acc|Ret];
                                      not_found ->

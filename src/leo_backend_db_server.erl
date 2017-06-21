@@ -42,7 +42,7 @@
          delete/2,
          fetch/4,
          first/1,
-         first_n/2,
+         first_n/3,
          status/1,
          close/1,
          count/1,
@@ -148,13 +148,14 @@ first(Id) ->
 
 %% @doc Fetch first N records from backend-db.
 %%
--spec(first_n(Id, N) ->
+-spec(first_n(Id, N, Condition) ->
              {ok, list()} |
              not_found |
              {error, any()} when Id::atom(),
-                                 N::pos_integer()).
-first_n(Id, N) ->
-    gen_server:call(Id, {first_n, N}, ?DEF_TIMEOUT).
+                                 N::pos_integer(),
+                                 Condition::function()).
+first_n(Id, N, Condition) ->
+    gen_server:call(Id, {first_n, N, Condition}, ?DEF_TIMEOUT).
 
 %% @doc Retrieve the current status from the database
 %%
@@ -330,10 +331,11 @@ handle_call(first, _From, #state{db = DBModule,
     Reply = erlang:apply(DBModule, first, [Handler]),
     {reply, Reply, State};
 
-handle_call({first_n, N}, _From, #state{db = DBModule,
-                                        handler = Handler} = State) when DBModule == 'leo_backend_db_eleveldb' ->
+handle_call({first_n, N, Condition}, _From, #state{db = DBModule,
+                                                   handler = Handler} = State)
+  when DBModule == 'leo_backend_db_eleveldb' ->
     Reply = case catch erlang:apply(DBModule, first_n,
-                                    [Handler, N]) of
+                                    [Handler, N, Condition]) of
                 {'EXIT', Cause} ->
                     {error, Cause};
                 Ret ->
