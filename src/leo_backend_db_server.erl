@@ -136,7 +136,7 @@ delete(Id, KeyBin) ->
                                  Fun::function(),
                                  MaxKeys::integer()).
 fetch(Id, KeyBin, Fun, MaxKeys) ->
-    gen_server:call(Id, {fetch, KeyBin, Fun, MaxKeys}, ?DEF_TIMEOUT).
+    gen_server:call(Id, {fetch, KeyBin, Fun, MaxKeys}, infinity).
 
 
 %% @doc Retrieve a first record from backend-db.
