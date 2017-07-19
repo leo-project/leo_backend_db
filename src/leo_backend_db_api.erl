@@ -131,6 +131,11 @@ delete(InstanceName, KeyBin) ->
                                  KeyBin::binary(),
                                  Fun::function()).
 fetch(InstanceName, KeyBin, Fun) ->
+    %% The purpose to set very large value(2^32) here is to iterate all items stored in eleveldb.
+    %% However what if the number of items is more than 2^32?
+    %% This concern is valid however given that the max file size on ext4 is limited to 16TB and
+    %% the average file size stored in LeoFS tend to be relatively large, It seems harmless at least as of now(7/19/2017).
+    %% We might need to take another look in future.
     fetch(InstanceName, KeyBin, Fun, round(math:pow(2, 32))).
 
 -spec(fetch(InstanceName, KeyBin, Fun, MaxKeys) ->
