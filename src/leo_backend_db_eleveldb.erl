@@ -345,6 +345,8 @@ fold_loop({ok, K, V}, Itr, Fun, Acc, Prefix, MaxKeys) ->
     PrefixSize = byte_size(Prefix),
     fold_loop_1(K, V, Itr, Fun, Acc,
                 Prefix, MaxKeys, KeySize, PrefixSize);
+fold_loop({error, iterator_closed},_Itr,_Fun, Acc,_Prefix,_MaxKeys) ->
+    throw({iterator_closed, Acc});
 fold_loop({error,_},_Itr,_Fun, Acc,_Prefix,_MaxKeys) ->
     Acc.
 
