@@ -29,6 +29,7 @@
 -behaviour(gen_server).
 
 -include("leo_backend_db.hrl").
+-include_lib("leo_commons/include/leo_commons.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
@@ -377,7 +378,7 @@ handle_call(count, _From, State) ->
 handle_call(run_compaction, _From, #state{db = DBModule,
                                           path = Path} = State) ->
     NewPath = gen_file_raw_path(Path),
-    case filelib:ensure_dir(NewPath) of
+    case leo_file:ensure_dir(NewPath) of
         ok ->
             case DBModule:open(NewPath) of
                 {ok, NewHandler} ->
@@ -484,7 +485,7 @@ get_raw_path(SymLinkPath) ->
             {ok, FileName};
         {error, enoent} ->
             RawPath = gen_file_raw_path(SymLinkPath),
-            case filelib:ensure_dir(RawPath) of
+            case leo_file:ensure_dir(RawPath) of
                 ok ->
                     case file:make_symlink(RawPath, SymLinkPath) of
                         ok ->
