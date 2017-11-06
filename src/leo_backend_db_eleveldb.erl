@@ -25,6 +25,7 @@
 -module(leo_backend_db_eleveldb).
 
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("leo_commons/include/leo_commons.hrl").
 -include("leo_backend_db.hrl").
 
 -export([open/1, open/2, close/1]).
@@ -61,7 +62,7 @@ open(Path, Config) ->
                {sst_block_size, BlockSize}
               ],
 
-    case filelib:ensure_dir(Path) of
+    case leo_file:ensure_dir(Path) of
         ok ->
             open_1(Path, Options);
         {error, Cause} ->
