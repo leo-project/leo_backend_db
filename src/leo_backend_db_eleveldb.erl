@@ -44,7 +44,8 @@
 -spec(open(Path) ->
              {error, any()} | {ok, pid()} when Path::string()).
 open(Path) ->
-    Options = [{write_buffer_size, ?env_eleveldb_write_buf_size()},
+    Options = [{fadvise_willneed, ?env_eleveldb_fadvise_willneed()},
+               {write_buffer_size, ?env_eleveldb_write_buf_size()},
                {max_open_files, ?env_eleveldb_max_open_files()},
                {block_size, ?env_eleveldb_sst_block_size()}],
     open(Path, Options).
@@ -53,10 +54,12 @@ open(Path) ->
              {error, any()} | {ok, pid()} when Path::string(),
                                                Config::[tuple()]).
 open(Path, Config) ->
+    Fadvise = leo_misc:get_value(fadvise_willneed, Config, ?DEF_ELEVELDB_FADVISE_WILLNEED),
     WriteBufferSize = leo_misc:get_value(write_buffer_size, Config, ?DEF_ELEVELDB_WRITE_BUF_SIZE),
     MaxOpenFiles = leo_misc:get_value(max_open_files, Config, ?DEF_ELEVELDB_MAX_OPEN_FILES),
     BlockSize = leo_misc:get_value(block_size, Config, ?DEF_ELEVELDB_SST_BLOCK_SIZE),
     Options = [{create_if_missing, true},
+               {fadvise_willneed, Fadvise},
                {write_buffer_size, WriteBufferSize},
                {max_open_files, MaxOpenFiles},
                {sst_block_size, BlockSize}

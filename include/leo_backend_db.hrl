@@ -29,9 +29,19 @@
 -type(type_of_methods() :: put | get | delete | fetch).
 -type(backend_db() :: bitcask | leveldb | ets).
 
+-define(DEF_ELEVELDB_FADVISE_WILLNEED, false).
 -define(DEF_ELEVELDB_WRITE_BUF_SIZE, 62914560).
 -define(DEF_ELEVELDB_MAX_OPEN_FILES, 1000).
 -define(DEF_ELEVELDB_SST_BLOCK_SIZE, 4096).
+
+-define(env_eleveldb_fadvise_willneed(),
+        case application:get_env(?APP_NAME,
+                                 eleveldb_fadvise_willneed) of
+            {ok, Fadvise} ->
+                Fadvise;
+            _ ->
+                ?DEF_ELEVELDB_FADVISE_WILLNEED
+        end).
 
 -define(env_eleveldb_write_buf_size(),
         case application:get_env(?APP_NAME,
