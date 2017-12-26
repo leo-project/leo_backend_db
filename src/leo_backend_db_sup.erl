@@ -66,6 +66,7 @@ stop() ->
 %% @doc supervisor callback - Module:init(Args) -> Result
 %% @end
 init([]) ->
+    catch ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
     {ok, {{one_for_one, 5, 60}, []}}.
 
 
@@ -85,15 +86,6 @@ start_child(SupRef, InstanceName, NumOfDBProcs, BackendDB, DBRootPath) ->
 start_child(SupRef, InstanceName, NumOfDBProcs,
             BackendDB, DBRootPath, IsStrictCheck) ->
     ok = leo_misc:init_env(),
-    catch ets:new(?ETS_TABLE_NAME, [named_table, public, {read_concurrency, true}]),
-    %% Necessary as the caller process is ephemeral (being terminated immediately)
-    SupPid = case is_atom(SupRef) of
-                 true ->
-                     whereis(SupRef);
-                 false ->
-                     SupRef
-             end,
-    catch ets:give_away(?ETS_TABLE_NAME, SupPid, []),
     start_child_1(SupRef, InstanceName, NumOfDBProcs - 1, (NumOfDBProcs == 1),
                   BackendDB, DBRootPath, IsStrictCheck, []).
 
