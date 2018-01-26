@@ -306,11 +306,7 @@ first_n(Handler, N, Condition) ->
              {ok, Count} | {error, any()} when Handler::eleveldb:db_ref(),
                                                Count::non_neg_integer()).
 count(Handler) ->
-    %% Function to count the number of records
-    Fun = fun({_K, _V}, Acc) ->
-                  {false, Acc + 1}
-          end,
-    case catch fold(Handler, Fun, 0, []) of
+    case catch eleveldb:count(Handler) of
         {ok, Count} ->
             {ok, Count};
         {'EXIT', Cause} ->
