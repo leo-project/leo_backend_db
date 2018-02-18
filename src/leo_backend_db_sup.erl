@@ -2,7 +2,7 @@
 %%
 %% Leo Bakcend DB
 %%
-%% Copyright (c) 2012-2017 Rakuten, Inc.
+%% Copyright (c) 2012-2018 Rakuten, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -45,14 +45,14 @@
 %% @doc Creates a supervisor process as part of a supervision tree
 %% @end
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor2:start_link({local, ?MODULE}, ?MODULE, []).
 
 
 %% @doc Stop process
 stop() ->
     case whereis(?MODULE) of
         Pid when is_pid(Pid) ->
-            List = supervisor:which_children(Pid),
+            List = supervisor2:which_children(Pid),
             ok = close_db(List),
             ok;
         _ ->
@@ -117,9 +117,9 @@ start_child_1(SupRef, InstanceName, NumOfDBProcs,
     Args = [Id, BackendMod, Path, IsStrictCheck],
     ChildSpec = {Id,
                  {leo_backend_db_server, start_link, Args},
-                 permanent, 2000, worker, [leo_backend_db_server]},
+                 {permanent, 2}, 2000, worker, [leo_backend_db_server]},
 
-    case supervisor:start_child(SupRef, ChildSpec) of
+    case supervisor2:start_child(SupRef, ChildSpec) of
         {ok, _Pid} when BackendDB == bitcask ->
             ok = bitcask:merge(Path),
             start_child_1(SupRef, InstanceName, NumOfDBProcs - 1,
