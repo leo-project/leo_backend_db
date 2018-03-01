@@ -43,6 +43,7 @@
          delete/2,
          fetch/4,
          first/1,
+         first_n/2,
          first_n/3,
          status/1,
          close/1,
@@ -146,6 +147,16 @@ fetch(Id, KeyBin, Fun, MaxKeys) ->
              {ok, any(), any()} | {error, any()} when Id::atom()).
 first(Id) ->
     gen_server:call(Id, first, ?DEF_TIMEOUT).
+
+%% @doc Fetch first N records from backend-db.
+%%
+-spec(first_n(Id, N) ->
+             {ok, list()} |
+             not_found |
+             {error, any()} when Id::atom(),
+                                 N::pos_integer()).
+first_n(Id, N) ->
+    gen_server:call(Id, {first_n, N}, ?DEF_TIMEOUT).
 
 %% @doc Fetch first N records from backend-db.
 %%
@@ -337,6 +348,17 @@ handle_call({first_n, N, Condition}, _From, #state{db = DBModule,
   when DBModule == 'leo_backend_db_eleveldb' ->
     Reply = case catch erlang:apply(DBModule, first_n,
                                     [Handler, N, Condition]) of
+                {'EXIT', Cause} ->
+                    {error, Cause};
+                Ret ->
+                    Ret
+            end,
+    {reply, Reply, State};
+handle_call({first_n, N}, _From, #state{db = DBModule,
+                                        handler = Handler} = State)
+  when DBModule == 'leo_backend_db_eleveldb' ->
+    Reply = case catch erlang:apply(DBModule, first_n,
+                                    [Handler, N]) of
                 {'EXIT', Cause} ->
                     {error, Cause};
                 Ret ->

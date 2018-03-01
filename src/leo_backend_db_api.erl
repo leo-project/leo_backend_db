@@ -182,17 +182,14 @@ fetch(Res) ->
              {error, any()} when InstanceName::atom(),
                                  N::pos_integer()).
 first_n(InstanceName, N) ->
-    Condition = fun(_K,_V) ->
-                        true
-                end,
-    first_n(InstanceName, N, Condition).
+    first_n(InstanceName, N, undefined).
 
 -spec(first_n(InstanceName, N, Condition) ->
              {ok, list()} |
              not_found |
              {error, any()} when InstanceName::atom(),
                                  N::pos_integer(),
-                                 Condition::function()).
+                                 Condition::function()|undefined).
 first_n(InstanceName, N, Condition) ->
     case ets:lookup(?ETS_TABLE_NAME, InstanceName) of
         [] ->
@@ -200,13 +197,25 @@ first_n(InstanceName, N, Condition) ->
         [{InstanceName, List}] ->
             case catch lists:foldl(
                          fun(Id, Acc) ->
-                                 case ?SERVER_MODULE:first_n(Id, N, Condition) of
-                                     {ok, Ret} ->
-                                         [Acc|Ret];
-                                     not_found ->
-                                         Acc;
-                                     {error, Cause} ->
-                                         erlang:error(Cause)
+                                 case Condition of
+                                     undefined ->
+                                         case ?SERVER_MODULE:first_n(Id, N) of
+                                             {ok, Ret} ->
+                                                 [Acc|Ret];
+                                             not_found ->
+                                                 Acc;
+                                             {error, Cause} ->
+                                                 erlang:error(Cause)
+                                         end;
+                                     _Other ->
+                                         case ?SERVER_MODULE:first_n(Id, N, Condition) of
+                                             {ok, Ret} ->
+                                                 [Acc|Ret];
+                                             not_found ->
+                                                 Acc;
+                                             {error, Cause} ->
+                                                 erlang:error(Cause)
+                                         end
                                  end
                          end, [], List) of
                 {'EXIT', Cause} ->

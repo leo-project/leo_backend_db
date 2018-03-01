@@ -29,7 +29,7 @@
 -include("leo_backend_db.hrl").
 
 -export([open/1, open/2, close/1]).
--export([get/2, put/3, delete/2, prefix_search/4, first/1, first_n/3]).
+-export([get/2, put/3, delete/2, prefix_search/4, first/1, first_n/2, first_n/3]).
 -export([count/1]).
 -export([status_compaction/1]).
 
@@ -262,6 +262,32 @@ first(Handler) ->
             {error, Cause}
     end.
 
+%% @doc Fetch first N records from eleveldb in batch.
+%%      ONLY one interaction happens between Erlang Runtime and NIF.
+%%
+-spec(first_n(Handler, N) ->
+             {ok, [_]} | not_found | {error, any()} when Handler::eleveldb:db_ref(),
+                                                         N::pos_integer()).
+first_n(Handler, N) ->
+    case catch eleveldb:first_n(Handler, N) of
+        {ok, []} ->
+            not_found;
+        {ok, List} ->
+            {ok, List};
+        {'EXIT', Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING},
+                                    {function, "first_n/2"},
+                                    {line, ?LINE}, {body, Cause}]),
+            {error, Cause};
+        {error, Cause} ->
+            error_logger:error_msg("~p,~p,~p,~p~n",
+                                   [{module, ?MODULE_STRING},
+                                    {function, "first_n/2"},
+                                    {line, ?LINE}, {body, Cause}]),
+            {error, Cause}
+    end.
+
 %% @doc Fetch first N records from eleveldb.
 %%
 -spec(first_n(Handler, N, Condition) ->
@@ -289,13 +315,13 @@ first_n(Handler, N, Condition) ->
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
                                    [{module, ?MODULE_STRING},
-                                    {function, "first_n/2"},
+                                    {function, "first_n/3"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause};
         {error, Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
                                    [{module, ?MODULE_STRING},
-                                    {function, "first_n/2"},
+                                    {function, "first_n/3"},
                                     {line, ?LINE}, {body, Cause}]),
             {error, Cause}
     end.
