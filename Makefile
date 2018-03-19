@@ -1,16 +1,14 @@
 .PHONY: all get_deps compile xref eunit check_plt build_plt dialyzer doc callgraph graphviz clean distclean
 
-REBAR := ./rebar
+REBAR := ./rebar3
 APPS = erts kernel stdlib sasl crypto compiler inets mnesia public_key runtime_tools snmp syntax_tools tools xmerl webtool ssl
 LIBS = deps/leo_commons/ebin deps/bitcask/ebin deps/eleveldb/ebin
 PLT_FILE = .leo_backend_db_dialyzer_plt
 DOT_FILE = leo_backend_db.dot
 CALL_GRAPH_FILE = leo_backend_db.png
 
-all: get_deps compile xref eunit
+all: compile xref eunit
 
-get_deps:
-	@$(REBAR) get-deps
 compile:
 	$(SHELL) -c ./replace_otp_vsn.sh
 	@$(REBAR) compile
