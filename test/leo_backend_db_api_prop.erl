@@ -2,7 +2,7 @@
 %%
 %% Leo Backend DB
 %%
-%% Copyright (c) 2012-2014 Rakuten, Inc.
+%% Copyright (c) 2012-2018 Rakuten, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -37,10 +37,10 @@
          postcondition/3]).
 
 
--type db_type() :: 'bitcask' | 'leveldb'.
+-type db_type() :: 'leveldb'.
 
--record(state, {stored = []  :: [string()],  %% list of objects stored in DB
-                type         :: db_type()
+-record(state, {stored = [] :: [string()],  %% list of objects stored in DB
+                type :: db_type()
                }).
 
 

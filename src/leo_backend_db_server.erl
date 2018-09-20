@@ -237,12 +237,6 @@ get_db_raw_filepath(Id) ->
 %% GEN_SERVER CALLBACKS
 %%--------------------------------------------------------------------
 %% @doc gen_server callback - Module:init(Args) -> Result
-init([Id, leo_backend_db_ets = DBModule, Table,_]) ->
-    ok = DBModule:open(Table),
-    {ok, #state{id = Id,
-                db = DBModule,
-                handler = list_to_atom(Table)}};
-
 init([Id, DBModule, Path, IsStrictCheck]) ->
     {ok, Curr} = file:get_cwd(),
     Path_1 = case Path of

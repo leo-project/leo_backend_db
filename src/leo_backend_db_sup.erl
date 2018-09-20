@@ -120,10 +120,6 @@ start_child_1(SupRef, InstanceName, NumOfDBProcs,
                  {permanent, 2}, 2000, worker, [leo_backend_db_server]},
 
     case supervisor2:start_child(SupRef, ChildSpec) of
-        {ok, _Pid} when BackendDB == bitcask ->
-            ok = bitcask:merge(Path),
-            start_child_1(SupRef, InstanceName, NumOfDBProcs - 1,
-                          IsOneDevice, BackendDB, DBRootPath, IsStrictCheck, [Id|Acc]);
         {ok, _Pid} ->
             start_child_1(SupRef, InstanceName, NumOfDBProcs - 1,
                           IsOneDevice, BackendDB, DBRootPath, IsStrictCheck, [Id|Acc]);
@@ -158,13 +154,9 @@ close_db([_|T]) ->
 %% @private
 -spec(backend_mod(backend_db()) ->
              atom()).
-backend_mod(bitcask) ->
-    leo_backend_db_bitcask;
 backend_mod(leveldb) ->
-    leo_backend_db_eleveldb;
-backend_mod(rocksdb) ->
-    leo_backend_db_erocksdb;
-backend_mod(ets) ->
-    leo_backend_db_ets;
+    'leo_backend_db_eleveldb';
+%% backend_mod(rocksdb) ->
+%%     leo_backend_db_erocksdb;
 backend_mod(_) ->
-    leo_backend_db_ets.
+    'leo_backend_db_eleveldb'.

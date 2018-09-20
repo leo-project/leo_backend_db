@@ -2,7 +2,7 @@
 %%
 %% Leo Backend DB
 %%
-%% Copyright (c) 2012-2014 Rakuten, Inc.
+%% Copyright (c) 2012-2018 Rakuten, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -63,9 +63,7 @@
 
 backend_db_test_() ->
     {foreach, fun setup/0, fun teardown/1,
-     [{with, [T]} || T <- [fun all_bitcask_/1,
-                           fun all_eleveldb_/1,
-                           fun all_ets_/1,
+     [{with, [T]} || T <- [fun all_eleveldb_/1,
                            fun first_/1,
                            fun count_/1,
                            fun compact_/1
@@ -83,16 +81,8 @@ teardown(_) ->
     timer:sleep(1000),
     ok.
 
-all_bitcask_(_) ->
-    inspect(?TEST_INSTANCE_NAME1, ?BACKEND_DB_BITCASK, ?PATH1),
-    ok.
-
 all_eleveldb_(_) ->
     inspect(?TEST_INSTANCE_NAME2, ?BACKEND_DB_LEVELDB, ?PATH2),
-    ok.
-
-all_ets_(_) ->
-    inspect(?TEST_INSTANCE_NAME3, ?BACKEND_DB_ETS, "test_table"),
     ok.
 
 inspect(Instance, BackendDb, Path) ->
@@ -212,7 +202,8 @@ inspect(Instance, BackendDb, Path) ->
         ?BACKEND_DB_LEVELDB ->
             ?assertEqual(true, is_binary(SCH));
         _ ->
-            ?assertEqual({error, unsupported}, SCH)
+            ?debugVal({BackendDb, SCH}),
+            void
     end,
     ok.
 

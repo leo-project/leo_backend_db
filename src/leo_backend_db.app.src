@@ -23,16 +23,12 @@
 {application, leo_backend_db,
  [
   {description, "Leo Backend db"},
-  {vsn, "1.2.30"},
+  {vsn, "1.2.31"},
   {id, "leo_backend_db"},
   {registered,   []},
   {applications, [kernel, stdlib]},
   {mod, {leo_backend_db_app, []}},
-  {env, [{profile, false},
-         {bitcask_flags, [{expiry_secs,   -1},
-                          {max_file_size, 16#80000000},
-                          {merge_window,  always}
-                         ]}
+  {env, [{profile, false}
         ]}
  ]
 }.
