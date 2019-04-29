@@ -11,7 +11,7 @@ leo_backend_db
 ## Build Information
 
 * **leo_backend_db** uses [rebar](https://github.com/basho/rebar) build system. Makefile so that simply running "make" at the top level should work.
-* **leo_backend_db** requires Erlang R16B03-1 or later.
+* **leo_backend_db** requires Erlang/OTP 19.3 or later.
 
 ## Usage
 
@@ -21,10 +21,10 @@ $ cd leo_backend_db
 $ make
 $ mkdir test_db
 $ erl -pa ebin deps/*/ebin
-Erlang/OTP 17 [erts-6.4] [source] [64-bit] [smp:8:8] [async-threads:10] [kernel-poll:false] [dtrace]
+Erlang/OTP 21 [erts-10.3] [source] [64-bit] [smp:12:12] [ds:12:12:10] [async-threads:1] [hipe]
 
-Eshell V6.4  (abort with ^G)
-1> leo_backend_db_api:new(test_leveldb, 2, leveldb, "test_db"). # third argument can be one of 'bitcask', 'leveldb', and 'ets'.
+Eshell V10.3  (abort with ^G)
+1> leo_backend_db_api:new(test_leveldb, 2, leveldb, "test_db").
 ok
 2> leo_backend_db_api:put(test_leveldb, <<"key1">>, <<"val1">>).
 ok
@@ -52,4 +52,5 @@ leo_backend_db's license is "Apache License Version 2.0".
 
 ## Sponsors
 
-LeoProject/LeoFS is sponsored by [Rakuten, Inc.](http://global.rakuten.com/corp/) and supported by [Rakuten Institute of Technology](http://rit.rakuten.co.jp/).
+* LeoProject/LeoFS was sponsored by [Rakuten, Inc.](http://global.rakuten.com/corp/) from 2012 to Dec of 2018.
+* LeoProject/LeoFS is sponsored by [Lions Data, Ltd](https://lions-data.com/) from Jan of 2019.
