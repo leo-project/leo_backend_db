@@ -1,7 +1,7 @@
 leo_backend_db
 ==============
 
-[![Build Status](https://secure.travis-ci.org/leo-project/leo_backend_db.png?branch=develop)](http://travis-ci.org/leo-project/leo_backend_db)
+[![Build Status](https://secure.travis-ci.org/leo-project/leo_backend_db.png?branch=v2)](http://travis-ci.org/leo-project/leo_backend_db)
 
 * **leo_backend_db** is wrapper of local KVS and uses Basho bitcask, Basho eleveldb and Erlang ETS.
   * [bitcask](https://github.com/basho/bitcask)
