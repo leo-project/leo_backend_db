@@ -263,17 +263,21 @@ first(Handler) ->
     end.
 
 %% @doc Fetch first N records from eleveldb in batch.
-%%      ONLY one interaction happens between Erlang Runtime and NIF.
 %%
 -spec(first_n(Handler, N) ->
              {ok, [_]} | not_found | {error, any()} when Handler::eleveldb:db_ref(),
                                                          N::pos_integer()).
 first_n(Handler, N) ->
-    case catch eleveldb:first_n(Handler, N) of
+    %% Since basho/eleveldb doesn't have first_n/2, we use fold to get first N records
+    Fun = fun({K, V}, Acc) ->
+                  Done = (length(Acc) + 1 >= N),
+                  {Done, [{K, V}|Acc]}
+          end,
+    case catch fold(Handler, Fun, [], []) of
         {ok, []} ->
             not_found;
         {ok, List} ->
-            {ok, List};
+            {ok, lists:reverse(List)};
         {'EXIT', Cause} ->
             error_logger:error_msg("~p,~p,~p,~p~n",
                                    [{module, ?MODULE_STRING},
@@ -332,7 +336,11 @@ first_n(Handler, N, Condition) ->
              {ok, Count} | {error, any()} when Handler::eleveldb:db_ref(),
                                                Count::non_neg_integer()).
 count(Handler) ->
-    case catch eleveldb:count(Handler) of
+    %% Since basho/eleveldb doesn't have count/1, we use fold to count all records
+    Fun = fun(_KV, Count) ->
+                  {false, Count + 1}
+          end,
+    case catch fold(Handler, Fun, 0, []) of
         {ok, Count} ->
             {ok, Count};
         {'EXIT', Cause} ->
