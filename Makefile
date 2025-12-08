@@ -1,6 +1,6 @@
 .PHONY: all get_deps compile xref eunit check_plt build_plt dialyzer doc callgraph graphviz clean distclean
 
-REBAR := ./rebar
+REBAR := ./rebar3
 APPS = erts kernel stdlib sasl crypto compiler inets mnesia public_key runtime_tools snmp syntax_tools tools xmerl webtool ssl
 LIBS = deps/leo_commons/ebin deps/bitcask/ebin deps/eleveldb/ebin
 PLT_FILE = .leo_backend_db_dialyzer_plt
@@ -10,13 +10,13 @@ CALL_GRAPH_FILE = leo_backend_db.png
 all: get_deps compile xref eunit
 
 get_deps:
-	@$(REBAR) get-deps
+	@$(REBAR) get-deps || $(REBAR) upgrade
 compile:
 	@$(REBAR) compile
 xref:
-	@$(REBAR) xref skip_deps=true
+	@$(REBAR) xref
 eunit:
-	@$(REBAR) eunit skip_deps=true
+	@$(REBAR) eunit
 check_plt:
 	@$(REBAR) compile
 	dialyzer --check_plt --plt $(PLT_FILE) --apps $(APPS)
@@ -35,5 +35,5 @@ graphviz:
 clean:
 	@$(REBAR) clean
 distclean:
-	@$(REBAR) delete-deps
+	@rm -rf _build
 	@$(REBAR) clean
